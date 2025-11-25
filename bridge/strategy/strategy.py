@@ -53,13 +53,13 @@ class Strategy:
 
         self.goalkeeper_idx = 0
         self.idx1 = 1
-        self.idx2 = 2
+        self.idx2 = 3
 
         # Индексы роботов соперника
 
-        self.goalkeeper_idx_enemy = 0
-        self.idx_enemy1 = 1
-        self.idx_enemy2 = 2
+        self.goalkeeper_idx_enemy = 2
+        self.idx_enemy1 = 4
+        self.idx_enemy2 = 5
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -72,7 +72,7 @@ class Strategy:
 
         # переменные для паса
         self.dist_to_pas = 2000 # расстояние до удара
-        self.dist_cath_ball = 300 #расстояние на которое робот можнт отехать при ловле мяча
+        self.dist_cath_ball = 300 #расстояние на которое робот мож git push --set-upstream origin Danyнт отехать при ловле мяча
         self.passes_status = FlagToPasses.FALSE # флаг состояний
         self.time_stop_dribbler = 0.2 # время для остнаовки дриблера после паса
         self.timer_stop_dribbler = 0.0 #для остановки дриблера
@@ -256,15 +256,8 @@ class Strategy:
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         
-        if self.passes_status == FlagToPasses.FALSE:
-            actions[1] = KickActions.Straight(self.optimal_point(field, field.allies[2].get_pos(), self.ball, self.enemies, self.point_kick_goal), get_pass_voltage(aux.dist(self.ball, field.allies[2].get_pos())))
-        else:
-            actions[1] = Actions.GoToPoint(field.allies[1].get_pos(), field.allies[1].get_angle())
-        if self.check_cath_ball(field, field.allies[2]):
-            actions[2] = self.process_catch_ball(field, field.allies[2])
-        else:
-            actions[2] = Actions.GoToPoint(self.optimal_point(field, field.allies[2].get_pos(), self.ball, self.enemies, self.point_kick_goal), (self.ball - field.allies[2].get_pos()).arg())
-        print(self.passes_status, field.ball_start_point, field.ball.get_vel().mag())
+        actions[self.idx1] = self.kick_ball_to_goal(field)
+
         self.process_goalkeeper(field,actions)
 
     def process_goalkeeper(self, field: fld.Field, actions: list[Optional[Action]]) -> None:

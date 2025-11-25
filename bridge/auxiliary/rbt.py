@@ -66,6 +66,11 @@ class Robot(entity.Entity):
         gains_full = [2.5, 0.07, 0.05, const.MAX_SPEED]
         gains_soft = gains_full
         a_gains_full = [15, 0.5, 0, const.MAX_SPEED_R]
+
+        if r_id == const.GK:
+
+            gains_full = [2.9, 0.09, 0.06, const.MAX_SPEED] #pdi 
+        
         if const.IS_SIMULATOR_USED:
             # gains_full = [8, 0.35, 0, const.MAX_SPEED]
             #            Prop  Diff  Int
