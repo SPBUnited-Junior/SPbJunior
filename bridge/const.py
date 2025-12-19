@@ -190,8 +190,8 @@ KICK_ALIGN_OFFSET = 40
 # for grabbing ball
 GRAB_AREA = GRAB_ALIGN_DIST
 # GRAB_DIST = 45  # 30 is good
-GRAB_DIST = 65
-GRAB_MULT = 3  # speed = dist * mult
+GRAB_DIST = 70
+GRAB_MULT = 5  # speed = dist * mult
 GRAB_OFFSET_ANGLE = 0.45
 
 if IS_SIMULATOR_USED:

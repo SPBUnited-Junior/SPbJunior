@@ -5,11 +5,13 @@ import math  # type: ignore
 from time import time  # type: ignore
 from typing import Optional
 from enum import Enum
+import time
 
 from bridge import const
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore
+
 
 """
 ONE ITERATION of strategy
@@ -51,9 +53,9 @@ class Strategy:
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 0
+        self.goalkeeper_idx = 3
         self.idx1 = 1
-        self.idx2 = 3
+        self.idx2 = 9
 
         # Индексы роботов соперника
 
@@ -140,6 +142,7 @@ class Strategy:
                 self.we_active = True
             else:
                 self.we_active = False
+    
 
         actions: list[Optional[Action]] = []
         for _ in range(const.TEAM_ROBOTS_MAX_COUNT):
@@ -147,9 +150,11 @@ class Strategy:
 
         if field.game_state == GameStates.RUN:
             self.run(field, actions)
+            return actions
             
         elif field.game_state == GameStates.TIMEOUT:
             pass
+            return actions
         elif field.game_state == GameStates.HALT:
             actions[self.idx1] = Actions.Stop()
             actions[self.idx2] = Actions.Stop()
@@ -162,6 +167,7 @@ class Strategy:
             pos_kikoff2 = aux.Point(1200 * field.polarity, 0)
             actions[self.idx1] = Actions.GoToPoint(pos_kikoff1, kik_angle1.arg())
             actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())
+            return actions
         
         elif field.game_state == GameStates.PREPARE_PENALTY and  self.we_active:
             kik_angle1 = robot_position1_enemy - robot_position1
@@ -172,12 +178,14 @@ class Strategy:
             actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())
 
             actions[self.idx1] = Actions.GoToPoint(pos_kikoff1, kik_angle1.arg())
-            actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())       
+            actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())   
+            return actions    
         
         elif field.game_state == GameStates.PENALTY and not self.we_active:
             position_penalty1 = self.ball
             angle_penalty1 = self.ball - robot_position1
             #ctions[self.idx1] = Actions.GoToPoint(position_penalty1, angle_penalty1.arg())
+            return actions
 
         elif field.game_state == GameStates.PENALTY and self.we_active:
             g_up_xy_attacker = field.enemy_goal.up - field.enemy_goal.eye_up * 35   #определяется угол ворот противоположный от враторя
@@ -192,6 +200,7 @@ class Strategy:
                 position_attacker_gate = g_down_xy_attacker
         
             actions[self.idx1] = Actions.Kick(position_attacker_gate, voltage_kik)
+            return actions
 
         elif field.game_state == GameStates.PREPARE_KICKOFF:
             kik_angle1 = robot_position1_enemy - robot_position1
@@ -202,6 +211,7 @@ class Strategy:
 
             actions[self.idx1] = Actions.GoToPoint(pos_kikoff1, kik_angle1.arg())
             actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())
+            return actions
             
         elif field.game_state == GameStates.KICKOFF and  not self.we_active:
             kik_angle1 = robot_position1_enemy - robot_position1
@@ -210,15 +220,17 @@ class Strategy:
             pos_kikoff2 = aux.Point(1000, 0)
             actions[self.idx1] = Actions.GoToPoint(pos_kikoff1, kik_angle1.arg())
             actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())
+            return actions
 
         elif field.game_state == GameStates.KICKOFF and self.we_active:
             self.run(field, actions)
             print(456789)
+            return actions
 
         elif field.game_state == GameStates.FREE_KICK:
             self.run(field, actions)
             pass
-
+            return actions
         elif field.game_state == GameStates.STOP:
             ball_pos = field.ball.get_pos()
                         
@@ -251,21 +263,11 @@ class Strategy:
 
             actions[self.idx1] = Actions.GoToPoint(robot_position1, robot1_angle)
             actions[self.idx2] = Actions.GoToPoint(robot_position2, robot2_angle)
-        
-        return actions
+            
 
-    def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
-        
-        actions[self.idx1] = self.kick_ball_to_goal(field)
+            return actions
 
-        self.process_goalkeeper(field,actions)
-
-    def process_goalkeeper(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
-        """
-        The logic by which the goalkeeper acts
-
-        includes (it is necessary to list the main points of the goalkeeper's strategy):
-        """
+    def goooooool(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         voltage_kik = 5
 
         robot_position_goalkeeper = field.allies[self.goalkeeper_idx].get_pos()
@@ -293,37 +295,54 @@ class Strategy:
         angle_goal_ball = (goal_position_gates - robot_position_goalkeeper).arg()
     
         # Определяем позицию для вратаря
-        if field.ball_start_point is not None:
+        # Определяем позицию для вратаря
+        if field.ball_start_point is not None and field.ball_start_point != aux.Point(0, 0):
+            # Проверяем, что ball_start_point инициализирован и не является нулевой точкой
             goal_position = aux.closest_point_on_line(field.ball_start_point, ball, robot_position_goalkeeper, "R")
         else:
             goal_position = field.ally_goal.center
 
-        position_goal = aux.is_point_inside_poly(goal_position, field.ally_goal.hull) # проверяем находится ли мяч в воротах
-
+        # Проверяем находится ли точка внутри ворот
+        position_goal = aux.is_point_inside_poly(goal_position, field.ally_goal.hull)
         if position_goal == False:
             goal_position = field.ally_goal.center
-
+        
         angle_goalkeeper = (ball - robot_position_goalkeeper).arg()
     
-        actions[self.goalkeeper_idx] = Actions.GoToPoint(goal_position, angle_goal_ball)
+        actions[self.goalkeeper_idx] = Actions.GoToPoint(goal_position, angle_goalkeeper)
+        print(1)
+    
 
     
         if field.is_ball_stop_near_goal():
             #actions[self.gk_idx] = Actions.Kick(goal_position_gates, voltage_kik, is_upper=True)
             actions[self.goalkeeper_idx] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
+            print(2)
+            return actions
 
     
         if field.is_ball_in(field.allies[self.goalkeeper_idx]):
             #actions[self.gk_idx] = Actions.Kick(goal_position_gates, voltage_kik,is_upper=True)
             actions[self.goalkeeper_idx] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
+            print(3)
+            return actions
             
 
         #waypoints[self.gk_idx] = wp.Waypoint(goal_position, angle_goalkeeper, wp.WType.S_BALL_KICK)
-    
+
+
+        #actions[self.goalkeeper_idx] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
+        print(4)
+        print(actions)
         return actions
-
-
         pass
+
+        
+
+    def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
+        #self.process_defender(field, actions)
+
+        self.goooooool(field, actions)
 
     def process_attacker(self, field: fld.Field, attacker: rbt.Robot, robot_catch_ball: rbt.Robot) -> Action:
         """

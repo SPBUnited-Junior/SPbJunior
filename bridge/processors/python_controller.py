@@ -84,6 +84,7 @@ class SSLController(BaseProcessor):
                 message = RobotCommand(robot.r_id, robot.color, cur_action)
 
                 self.robot_control_writer.write(message)
+                print("comm\n\n\n", message)
 
     def send_image(self) -> None:
         """Send commands to drawer processor"""

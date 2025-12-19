@@ -69,7 +69,7 @@ class Robot(entity.Entity):
 
         if r_id == const.GK:
 
-            gains_full = [2.9, 0.09, 0.06, const.MAX_SPEED] #pdi 
+            gains_full = [2.8, 0.12, 0.09, const.MAX_SPEED] #pdi 
         
         if const.IS_SIMULATOR_USED:
             # gains_full = [8, 0.35, 0, const.MAX_SPEED]
