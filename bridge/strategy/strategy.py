@@ -12,6 +12,8 @@ from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore
 from bridge.strategy.check_point import check_goal_point
 from bridge.strategy.Role import Role
+from bridge.strategy.ricochet import calculate_ricochet_shot, is_ricochet_possible, get_ricochet_action, visualize_ricochet
+from bridge.router.base_actions import ActionValues
 
 """
 ONE ITERATION of strategy
@@ -140,23 +142,34 @@ class Strategy:
 
         #массив для функции go_to_position
         self.used = [False] * const.ROBOTS_MAX_COUNT
+        self.flag_new_information_arg: bool = False
+        self.sr_res: float = 0
+        self.cnt: float = 0
+        self.spin_start_time: float = 0
 
 
-    def spin_test(self, field: fld.Field, idx: int = 0) -> list[Optional[Action]]:
-        actions: list[Optional[Action]] = [None] * const.TEAM_ROBOTS_MAX_COUNT  
+    def spin_test(self, field: fld.Field, actions: list[Optional[Action]], idx: int = 0) -> None:
     
+        if (self.cnt != 0):
+            print(self.sr_res / self.cnt)
         current_time = time()
-        if not hasattr(self, 'spin_start_time'):
-            self.spin_start_time = current_time
-            self.last_k = 0
 
-        el = int(current_time - self.spin_start_time)
+        el = int(current_time - self.spin_start_time) * 0.02
         k = el
+
+        if(not field.is_ball_in_ally_robot()):
+            if self.flag_new_information_arg: 
+                self.flag_new_information_arg = False
+                self.sr_res += k
+                self.cnt+=1
+            actions[idx] = Actions.BallGrab(0)
+            self.spin_start_time: float = time()
+            return
+        
+
         DRIBBLER_SPEED = 15
-        print(k)
-
         ANGULAR_SPEED = k * math.pi
-
+        self.flag_new_information_arg = True
         actions[idx] = Actions.VelocityWithDribbler(
             velocity=aux.Point(0, 0),
             angle=ANGULAR_SPEED,
@@ -164,8 +177,7 @@ class Strategy:
             control_angle_by_speed=True
         )
 
-        #actions[idx] = Actions.SimpleDribbler()
-        return actions
+        return
 #
     def process(self, field: fld.Field) -> list[Optional[Action]]:
         """
@@ -372,18 +384,20 @@ class Strategy:
         # else:
         #     actions[0] = KickActions.Turn_Kick(field.ally_goal.center, (self.ball - field.allies[0].get_pos()).arg())
 
-        robot1 = field.allies[0]
         # robot2 = field.allies[3]
         # robot3 = field.allies[7]
         # self.construction_well(field, actions, [robot1, robot2, robot3], aux.Point(200, 300), aux.Point(-200, -300))
         # print(robot1.get_pos(), robot2.get_pos(), robot3.get_pos())
 
         #actions[0] = KickActions.Turn_Kick(field.ally_goal.center, (self.ball - field.allies[0].get_pos()).arg())
-        block = Role.Block_Enemy_Pass(field, actions)
-        block.push(field.allies[1])
-        block.push(field.allies[2])
-        block.process()
 
+        # block = Role.Block_Enemy_Pass(field, actions)
+        # block.push(field.allies[1])
+        # block.push(field.allies[2])
+        # block.process()
+
+        self.spin_test(field, actions, 3)
+        return
         
 
     def process_goalkeeper(self, field: fld.Field, actions: list[Optional[Action]]) ->  list[Optional[Action]]:

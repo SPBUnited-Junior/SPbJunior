@@ -96,7 +96,7 @@ class Actions:
             ignore_ball: bool = False,
             target_vel: aux.Point = aux.Point(0, 0),
             ignore_robots: dict[const.Color, list[int]] = {},
-            dribbler_speed: Optional[float] = None
+            dribbler_speed: Optional[int] = None
         ) -> None:
             self.target_pos = target_pos
             self.target_angle = target_angle
