@@ -145,16 +145,16 @@ class Strategy:
         self.flag_new_information_arg: bool = False
         self.sr_res: float = 0
         self.cnt: float = 0
-        self.spin_start_time: float = 0
+        self.spin_start_time: float = time()
 
 
-    def spin_test(self, field: fld.Field, actions: list[Optional[Action]], idx: int = 5) -> None:
+    def spin_test(self, field: fld.Field, actions: list[Optional[Action]], idx: int = 7) -> None:
     
         if (self.cnt != 0):
             print(self.sr_res / self.cnt)
         current_time = time()
 
-        el = int(current_time - self.spin_start_time) * 0.02
+        el: float = int(current_time - self.spin_start_time) * 0.08
         k = el
 
         if(not field.is_ball_in_ally_robot()):
@@ -162,13 +162,13 @@ class Strategy:
                 self.flag_new_information_arg = False
                 self.sr_res += k
                 self.cnt+=1
-            actions[idx] = Actions.BallGrab(0)
-            self.spin_start_time: float = time()
+            actions[idx] = Actions.BallGrab(3)
+            print("1")  
             return
         
 
         DRIBBLER_SPEED = 15
-        ANGULAR_SPEED = k * math.pi
+        ANGULAR_SPEED = min(k, 3.5)
         self.flag_new_information_arg = True
         actions[idx] = Actions.VelocityWithDribbler(
             velocity=aux.Point(0, 0),
@@ -396,7 +396,7 @@ class Strategy:
         # block.push(field.allies[2])
         # block.process()
 
-        self.spin_test(field, actions, 5)
+        self.spin_test(field, actions, 7)
         
         return
         
