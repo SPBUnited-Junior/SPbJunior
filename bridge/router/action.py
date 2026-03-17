@@ -38,6 +38,8 @@ class ActionDomain:
 class Action:
     """Base class of Action"""
 
+    is_used = True
+
     def is_defined(self, _: ActionDomain) -> bool:
         """Scope"""
         return True

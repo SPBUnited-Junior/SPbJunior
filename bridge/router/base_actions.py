@@ -19,6 +19,11 @@ timer_to_stop : float = 0
 class Actions:
     """Class with all user-available actions (except kicks)"""
 
+    class Unused(Action):
+        """Stop the robot"""
+
+        is_used = False
+
     class Stop(Action):
         """Stop the robot"""
 

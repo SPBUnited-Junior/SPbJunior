@@ -3,7 +3,7 @@
 """
 
 from time import sleep, time
-from typing import List, Optional
+from typing import Optional
 
 import attr
 import attrs
@@ -16,9 +16,7 @@ from bridge import const, drawing
 from bridge.auxiliary import aux, fld, rbt
 from bridge.processors.python_controller import RobotCommand
 from bridge.router.action import Action, ActionDomain, ActionValues
-
-UDP_IP = "10.0.120.210"
-UDP_PORT = 10000
+from bridge.router.base_actions import Actions
 
 
 @attr.s(auto_attribs=True)
@@ -36,8 +34,8 @@ class CommandSink(BaseProcessor):
         """
         super().initialize(data_bus)
         self.field_reader = DataReader(data_bus, const.FIELD_TOPIC)
-        self.commands_sink_reader = DataReader(data_bus, const.CONTROL_TOPIC)
-        self.image_writer = DataWriter(data_bus, const.IMAGE_TOPIC, 20)
+        self.control_reader = DataReader(data_bus, const.CONTROL_TOPIC)
+        self.image_writer = DataWriter(data_bus, const.IMAGE_TOPIC, 10)
 
         self.tmp_timer = time()
 
@@ -50,16 +48,14 @@ class CommandSink(BaseProcessor):
 
         self.field[const.COLOR].router_image.timer = drawing.FeedbackTimer(time(), 10, 50)
 
-        self.waypoints_b: list[Optional[Action]] = [None for _ in range(const.TEAM_ROBOTS_MAX_COUNT)]
-        self.waypoints_y: list[Optional[Action]] = [None for _ in range(const.TEAM_ROBOTS_MAX_COUNT)]
-        self.actions: dict[const.Color, list[Optional[Action]]] = {
-            const.Color.BLUE: self.waypoints_b,
-            const.Color.YELLOW: self.waypoints_y,
-        }
-
         context = zmq.Context()
         self.s_control = context.socket(zmq.PUB)
         self.s_control.connect("tcp://127.0.0.1:5051")
+
+        self.processed_actions: dict[const.Color, list[Action]] = {
+            const.Color.BLUE: [Actions.Unused()] * const.TEAM_ROBOTS_MAX_COUNT,
+            const.Color.YELLOW: [Actions.Unused()] * const.TEAM_ROBOTS_MAX_COUNT,
+        }
 
     def process(self) -> None:
         """
@@ -71,102 +67,76 @@ class CommandSink(BaseProcessor):
         # return
 
         telemetry_message = drawing.get_wave() + "\n"
-        updated = False
-
         new_field = self.field_reader.read_last()
         if new_field is not None:
             updated_field: fld.LiteField = new_field.content
             if self.field_b.last_update != updated_field.last_update:
                 self.field_b.update_field(updated_field)
                 self.field_y.update_field(updated_field)
-                updated = True
 
-        cmds = self.commands_sink_reader.read_new()
+        cmds = self.control_reader.read_new()
+        if len(cmds) == 0:
+            return
         for cmd in cmds:
-            command: RobotCommand = cmd.content
-            if command.color == const.Color.BLUE:
-                self.waypoints_b[command.r_id] = command.action
-            else:
-                self.waypoints_y[command.r_id] = command.action
-            updated = True
+            new_commands: list[RobotCommand] = cmd.content
+            for command in new_commands:
+                self.processed_actions[command.color][command.r_id] = command.action
 
-        if updated:
-            self.field[const.COLOR].router_image.timer.start(time())
-            for color in [const.Color.BLUE, const.Color.YELLOW]:
-                team_message: str = (
-                    f"TEAM {str(color)}\n"
-                    + "\tr_id\tvelFRW\tvelLEFT\tvelR\tangle\tkickUP\tkickFRW\tautoUP\tautoFRW\tvolt\tdrib\n"
+        self.field[const.COLOR].router_image.timer.start(time())
+        for color in [const.Color.BLUE, const.Color.YELLOW]:
+            team_message: str = (
+                f"TEAM {str(color)}\n"
+                + "\tr_id\tvelFRW\tvelLEFT\tvelR\tangle\tkickUP\tkickFRW\tautoUP\tautoFRW\tvolt\tdrib\n"
+            )
+            team_commands: list[DecoderCommand] = []
+            for idx, action in enumerate(self.processed_actions[color]):
+                if action.is_used:
+                    if self.field[color].allies[idx].is_used():
+                        self.field[color].allies[idx].clear_fields()
+
+                        domain = ActionDomain(
+                            field=self.field[color],
+                            game_state=self.field[color].game_state,
+                            we_active=self.field[color].active_team in [const.Color.ALL, color],
+                            robot=self.field[color].allies[idx],
+                        )
+                        values = ActionValues()
+                        action.process(domain, values)
+
+                        cur_command = command_from_values(domain.field, domain.robot, values)
+                        team_commands.append(cur_command)
+                        team_message += create_telemetry(cur_command)
+                    elif time() - self.field[color].allies[idx].last_update() > const.TIME_TO_DIE:
+                        cur_command = stop_command(idx)
+                        team_commands.append(cur_command)
+                        team_message += create_telemetry(cur_command)
+                        self.processed_actions[color][idx] = Actions.Unused()
+
+            if len(team_commands) > 0:
+                control_data = DecoderTeamCommand(
+                    robot_commands=team_commands,
+                    isteamyellow=(color == const.Color.YELLOW),
                 )
-                team_commands: list[DecoderCommand] = []
-                for i in range(const.TEAM_ROBOTS_MAX_COUNT):
-                    cur_action = self.actions[color][i]
-                    domain = ActionDomain(
-                        field=self.field[color],
-                        game_state=self.field[color].game_state,
-                        we_active=self.field[color].active_team in [const.Color.ALL, color],
-                        robot=self.field[color].allies[i],
-                    )
-                    if cur_action is not None:
-                        if self.field[color].allies[i].is_used():
-                            self.field[color].allies[i].clear_fields()
 
-                            domain = ActionDomain(
-                                field=self.field[color],
-                                game_state=self.field[color].game_state,
-                                we_active=self.field[color].active_team in [const.Color.ALL, color],
-                                robot=self.field[color].allies[i],
-                            )
-                            values = ActionValues()
-                            cur_action.process(domain, values)
+                self.s_control.send_json({"control": "actuate_robot", "data": unstructure(control_data)})
 
-                            cur_command = command_from_values(domain.field, domain.robot, values)
-                            team_commands.append(cur_command)
-                            team_message += create_telemetry(cur_command)
-                        elif time() - self.field[color].allies[i].last_update() > const.TIME_TO_DIE:
-                            cur_command = stop_command(i)
-                            team_commands.append(cur_command)
-                            team_message += create_telemetry(cur_command)
-                            self.actions[color][i] = None
+            telemetry_message += team_message
+            telemetry_message += "-" * 90 + "\n"
 
-                if len(team_commands) > 0:
-                    control_data = DecoderTeamCommand(
-                        robot_commands=team_commands,
-                        isteamyellow=(color == const.Color.YELLOW),
-                    )
-
-                    self.s_control.send_json({"control": "actuate_robot", "data": unstructure(control_data)})
-
-                telemetry_message += team_message
-                telemetry_message += "-" * 90 + "\n"
-
-            self.field[const.COLOR].router_image.timer.end(time())
-            self.image_writer.write(self.field[const.COLOR].path_image)
-            self.field_b.clear_images()
-            self.field_y.clear_images()
-
-            self.field[const.COLOR].router_image.send_telemetry("COMMANDS TO ROBOTS", telemetry_message)
+        self.field[const.COLOR].router_image.timer.end(time())
+        self.field[const.COLOR].router_image.send_telemetry("COMMANDS TO ROBOTS", telemetry_message)
         self.image_writer.write(self.field[const.COLOR].router_image)
+
+        self.field_b.clear_images()
+        self.field_y.clear_images()
 
     def finalize(self) -> None:
 
         team_commands: list[DecoderCommand] = []
         for r_id in range(const.TEAM_ROBOTS_MAX_COUNT):
-            team_commands.append(
-                DecoderCommand(
-                    robot_id=r_id,
-                    kick_up=False,
-                    kick_forward=False,
-                    auto_kick_up=False,
-                    auto_kick_forward=False,
-                    kicker_setting=0,
-                    dribbler_setting=0,
-                    forward_vel=0,
-                    left_vel=0,
-                    angular_vel=0,
-                )
-            )
+            team_commands.append(stop_command(r_id))
 
-        for _ in range(5):
+        for _ in range(5):  # NOTE not enough for sim
             for team in [True, False]:
                 control_data = DecoderTeamCommand(robot_commands=team_commands, isteamyellow=team)
                 self.s_control.send_json({"control": "actuate_robot", "data": unstructure(control_data)})
@@ -187,12 +157,12 @@ def command_from_values(field: fld.Field, robot: rbt.Robot, values: ActionValues
             ang_vel = robot.angle_reg.process(aerr, -robot.get_anglevel())
             robot.update_vel_w(ang_vel)
         else:
-            robot.delta_angle = aerr
+            robot.delta_angle = aerr * 20
 
         reg_vel = aux.Point(robot.speed_x, -robot.speed_y)
         field.router_image.draw_line(
             robot.get_pos(),
-            robot.get_pos() + aux.rotate(reg_vel, robot.get_angle()) * 50,
+            robot.get_pos() + aux.rotate(reg_vel, robot.get_angle()) / 5,
         )
     else:
         # print("manual speeds: ", values.vel, values.angle)
@@ -202,7 +172,7 @@ def command_from_values(field: fld.Field, robot: rbt.Robot, values: ActionValues
         if const.IS_SIMULATOR_USED:
             robot.update_vel_w(values.angle)
         else:
-            robot.delta_angle = values.angle
+            robot.delta_angle = values.angle * 5
 
     return DecoderCommand(
         robot_id=robot.r_id,
@@ -239,6 +209,8 @@ def create_telemetry(cmd: "DecoderCommand") -> str:
 
 @attrs.define
 class DecoderCommand:
+    """Class with control command for one robot"""
+
     robot_id: int = attrs.field()
 
     kick_up: bool = attrs.field()
@@ -261,10 +233,13 @@ test_commands = [
 
 
 def stop_command(idx: int) -> DecoderCommand:
+    """Command to stop a robot"""
     return DecoderCommand(idx, False, False, False, False, 0, 0, 0, 0, 0, None)
 
 
 @attrs.define
 class DecoderTeamCommand:
-    robot_commands: List[DecoderCommand] = attrs.field(factory=list)
+    """Class for sending control commands to robots of one team"""
+
+    robot_commands: list[DecoderCommand] = attrs.field(factory=list)
     isteamyellow: bool = attrs.field(default=False)

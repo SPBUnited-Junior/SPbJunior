@@ -50,8 +50,9 @@ class Role:
             self.attacker = robot
 
         def process(self):
+            pass
             
-
+        
 
     class Goalkeper:
 

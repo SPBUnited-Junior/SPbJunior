@@ -63,18 +63,14 @@ class Robot(entity.Entity):
         self.yy_flp = tau.FOLP(self.yy_t, const.Ts)
 
         # !v REAL
-        gains_full = [2.5, 0.07, 0.05, const.MAX_SPEED]
-        if r_id == const.GK:
-            gains_full = [3.1, 0.06, 0.05, const.MAX_SPEED]
+        gains_full = [3.5, 0.15, -0.1, const.MAX_SPEED]
         gains_soft = gains_full
         a_gains_full = [15, 0.5, 0, const.MAX_SPEED_R]
         if const.IS_SIMULATOR_USED:
-            # gains_full = [8, 0.35, 0, const.MAX_SPEED]
             #            Prop  Diff  Int
             gains_full = [1.8, 0.06, 0.0, const.MAX_SPEED]
             gains_soft = gains_full
             a_gains_full = [8, 0.1, 0.1, const.MAX_SPEED_R]
-
         a_gains_soft = a_gains_full
 
         self.pos_reg_x = tau.PISD(
@@ -248,18 +244,6 @@ class Robot(entity.Entity):
         self.speed_x = -speed.x
         self.speed_y = speed.y
 
-        # if abs(self.speed_r) > const.MAX_SPEED_R:
-        #     self.speed_r = math.copysign(const.MAX_SPEED_R, self.speed_r)
-
-        # vec_speed = math.sqrt(self.speed_x**2 + self.speed_y**2)
-        # r_speed = abs(self.speed_r)
-        # if not const.IS_SIMULATOR_USED:
-        #     vec_speed *= abs((const.MAX_SPEED_R - r_speed) / const.MAX_SPEED_R) ** 2
-        # ang = math.atan2(self.speed_y, self.speed_x)
-
-        # self.speed_x = vec_speed * math.cos(ang)
-        # self.speed_y = vec_speed * math.sin(ang)
-
     def update_vel_w(self, wvel: float) -> None:
         """Update robot angle vel"""
         self.speed_r = wvel
@@ -279,18 +263,6 @@ class Robot(entity.Entity):
 
         self.speed_x = -speed.x
         self.speed_y = speed.y
-
-        # if abs(self.speed_r) > const.MAX_SPEED_R:
-        #     self.speed_r = math.copysign(const.MAX_SPEED_R, self.speed_r)
-
-        # vec_speed = math.sqrt(self.speed_x**2 + self.speed_y**2)
-        # r_speed = abs(self.speed_r)
-        # if not const.IS_SIMULATOR_USED:
-        #     vec_speed *= abs((const.MAX_SPEED_R - r_speed) / const.MAX_SPEED_R) ** 2
-        # ang = math.atan2(self.speed_y, self.speed_x)
-
-        # self.speed_x = vec_speed * math.cos(ang)
-        # self.speed_y = vec_speed * math.sin(ang)
 
     def __str__(self) -> str:
         return (

@@ -100,7 +100,7 @@ class Strategy:
         # Индексы роботов
 
         self.goalkeeper_idx = 3
-        self.idx1 = 0
+        self.idx1 = 5
         self.idx2 = 2
         
         # Индексы роботов соперника
@@ -148,7 +148,7 @@ class Strategy:
         self.spin_start_time: float = 0
 
 
-    def spin_test(self, field: fld.Field, actions: list[Optional[Action]], idx: int = 0) -> None:
+    def spin_test(self, field: fld.Field, actions: list[Optional[Action]], idx: int = 5) -> None:
     
         if (self.cnt != 0):
             print(self.sr_res / self.cnt)
@@ -396,7 +396,8 @@ class Strategy:
         # block.push(field.allies[2])
         # block.process()
 
-        self.spin_test(field, actions, 3)
+        self.spin_test(field, actions, 5)
+        
         return
         
 
