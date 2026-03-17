@@ -302,7 +302,8 @@ class Strategy:
         return actions
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
-        
+        field.strategy_image.draw_circle(field.ball.get_pos(), (255, 192, 203), 5)
+
         # #actions = self.process_attacker(field, actions)
         # dist_ally = aux.dist(fld.find_nearest_robot(self.ball, field.active_allies(False)).get_pos(), self.ball)
         # dist_enemy = aux.dist(fld.find_nearest_robot(self.ball, field.active_enemies(False)).get_pos(), self.ball)
@@ -339,10 +340,27 @@ class Strategy:
 
         #actions[0] = KickActions.Turn_Kick(field.ally_goal.center, (self.ball - field.allies[0].get_pos()).arg())
         print(time() - self.timer_work_dribbler)
-        self.timer_work_dribbler = time() 
+        self.timer_work_dribbler = time()
+        
+        angle1 = aux.get_angle_between_points(field.ally_goal.up,self.ball,field.ally_goal.down)
+        field.strategy_image.draw_line(self.ball, field.ally_goal.up, (0,0,0), 5)
+        #field.strategy_image.send_telemetry('angle_half', str(angle1/2))
+        field.strategy_image.draw_line(self.ball, field.ally_goal.down, (0,0,0), 5)
+        
+        vec1 = self.ball + (field.ally_goal.down-self.ball).unity() * 2000
+        vec2 = self.ball + (field.ally_goal.up-self.ball).unity() * 2000
+        field.strategy_image.draw_line(vec1, vec2, (255,255,255), 10)
+        field.strategy_image.draw_line(self.ball, (aux.point_on_line(vec1, vec2, aux.dist(vec1,vec2)/2)), (0,0,255), 20)
+        field.strategy_image.draw_line(aux.point_on_line(vec1, vec2, aux.dist(vec1,vec2)/2), aux.closest_point_on_line(self.ball, field.ally_goal.down, aux.point_on_line(vec1, vec2, aux.dist(vec1,vec2)/2), "L"), (255,0,0), 10)
+        field.strategy_image.draw_line(aux.point_on_line(vec1, vec2, aux.dist(vec1,vec2)/2), aux.closest_point_on_line(self.ball, field.ally_goal.up, aux.point_on_line(vec1, vec2, aux.dist(vec1,vec2)/2), "L"), (255,0,0), 10)
+        gip_dist = 75/(angle1/2)
+        field.strategy_image.send_telemetry('gip_dist', str(gip_dist))
+        actions[2] = Actions.GoToPointIgnore(aux.Point(gip_dist*math.cos(angle1/2) + (self.ball).x, gip_dist*math.sin(angle1/2) + (self.ball).y), 0)
+
 
         
-
+        
+    '''
     def process_goalkeeper(self, field: fld.Field, actions: list[Optional[Action]]) ->  list[Optional[Action]]:
         """
         The logic by which the goalkeeper acts
@@ -401,7 +419,8 @@ class Strategy:
             actions[self.goalkeeper_idx] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
                 
         return actions
-
+    '''
+    '''
     def process_attacker(self, field: fld.Field, actions: list[Optional[Action]]) -> list[Optional[Action]]:
         """
         The logic by which the attacker acts
@@ -484,7 +503,7 @@ class Strategy:
 
 
         return actions
-    
+    '''
     def kick_ball_to_goal(self, field: fld.Field) -> Action:
         """
         Бъем в ворота
