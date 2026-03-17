@@ -28,8 +28,29 @@ class Role:
 
     class Attacker:
 
-        def __init__(self) -> None: 
-            pass
+        def __init__(self, 
+            field: fld.Field,
+            actions: list[Optional[Action]],
+        ) -> None:
+            self.actions: list[Optional[Action]] = actions
+            self.field: fld.Field = field
+            self.attacker: Optional[rbt.Robot] = None
+
+        def push(self, robot: rbt.Robot) -> None:
+            """
+            Назанчаем робота атакующим
+            """
+
+            is_ally: bool = robot.color == self.field.ally_color
+
+            if (not is_ally):
+                RuntimeError("In Role Block_Enemy_Pass push enemy robot")
+            if (robot.r_id == const.GK):
+                RuntimeError("In Role Block_Enemy_Pass push GK")
+            self.attacker = robot
+
+        def process(self):
+            
 
 
     class Goalkeper:
@@ -42,8 +63,6 @@ class Role:
         def push(self, robot: rbt.Robot) -> None:
             """
             Добавляем робота в роль
-            Если добавляем нашего он добавиться в массив защитников
-            Если добавить вражеского то он будет в массиве роботов которых мы блокируем
             """
 
             is_ally: bool = robot.color == self.field.ally_color
@@ -53,6 +72,7 @@ class Role:
             if (robot.r_id == const.GK):
                 RuntimeError("In Role Block_Enemy_Pass push GK")
             self.ally_robots.append(robot)
+            return
 
         def block_pass_point(self, 
             ally_robot: rbt.Robot, 
