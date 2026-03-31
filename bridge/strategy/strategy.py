@@ -45,13 +45,6 @@ class FlagToPasses(Enum): #флаги для состояние приянтия
     TRUE = 1 # ловим
     RELEASE = 2 # поймали и отпускаем
 
-class Kick_Status(Enum):
-    Pass_Straight = 1
-    Pass_Turn_Kick= 2
-    Goal_Turn_Kick = 3
-    Goal_Straight = 4
-    Not_Kick = 5
-
 class BallStatus(Enum):
     Active = 0
     Passive = 1
@@ -146,29 +139,39 @@ class Strategy:
         self.sr_res: float = 0
         self.cnt: float = 0
         self.spin_start_time: float = time()
+        self.flagt = True
 
 
     def spin_test(self, field: fld.Field, actions: list[Optional[Action]], idx: int = 7) -> None:
-    
+        print(self.flagt)
         if (self.cnt != 0):
-            print(self.sr_res / self.cnt)
+            print(self.sr_res, "final")
         current_time = time()
 
-        el: float = int(current_time - self.spin_start_time) * 0.08
+        el: float = int(current_time - self.spin_start_time) * 0.00
         k = el
 
+        if (self.flagt):
+            const.BALL_GRABBED_DIST = 100
+        else:
+            const.BALL_GRABBED_DIST = 155
         if(not field.is_ball_in_ally_robot()):
             if self.flag_new_information_arg: 
                 self.flag_new_information_arg = False
-                self.sr_res += k
+                self.sr_res = k
                 self.cnt+=1
-            actions[idx] = Actions.BallGrab(3)
-            print("1")  
+            if (self.flagt):
+                print(const.BALL_GRABBED_DIST)
+                actions[idx] = Actions.BallGrab(3)
+            else:
+                actions[idx] = Actions.Stop()
+            print("1", self.flagt) 
             return
         
 
+        print(k, "k")
         DRIBBLER_SPEED = 15
-        ANGULAR_SPEED = min(k, 3.5)
+        ANGULAR_SPEED = min(k, 4)
         self.flag_new_information_arg = True
         actions[idx] = Actions.VelocityWithDribbler(
             velocity=aux.Point(0, 0),
@@ -176,6 +179,7 @@ class Strategy:
             dribbler_speed=DRIBBLER_SPEED,
             control_angle_by_speed=True
         )
+        self.flagt = False
 
         return
 #
@@ -323,7 +327,6 @@ class Strategy:
             self.process_defender(field, actions)
 
         elif field.game_state == GameStates.STOP:
-            self.flag = False
             pos_attacker1 =  self.ball + (field.ally_goal.center - self.ball).unity() * self.dist_to_ball
             angle_attacker1 = (self.ball - robot_position1).arg()
             pos_attacker2 = field.ally_goal.center + field.ally_goal.eye_forw * 800
@@ -396,7 +399,7 @@ class Strategy:
         # block.push(field.allies[2])
         # block.process()
 
-        self.spin_test(field, actions, 7)
+        self.spin_test(field, actions, 2)
         
         return
         
