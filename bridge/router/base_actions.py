@@ -285,8 +285,30 @@ class Actions:
             if self.control_angle_by_speed:
                 current_action.beep = 1
 
+    class GoToPointWithDribbler(Action):
 
-         
+        def __init__(
+            self,
+            target_pos: aux.Point,
+            target_angle: float,
+            dribbler_speed: int = 15,
+            ball_interact: bool = False,
+            ignore_ball: bool = False,
+        ) -> None:
+            self.target_pos = target_pos
+            self.target_angle = target_angle
+            self.dribbler_speed = dribbler_speed
+            self.ball_interact = ball_interact
+            self.ignore_ball = ignore_ball
+
+        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
+            current_action.dribbler_speed = self.dribbler_speed
+            return [Actions.GoToPoint(
+                self.target_pos,
+                self.target_angle,
+                self.ball_interact,
+                self.ignore_ball
+            )]         
 
                 
 

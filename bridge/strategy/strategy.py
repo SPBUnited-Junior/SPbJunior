@@ -45,13 +45,6 @@ class FlagToPasses(Enum): #флаги для состояние приянтия
     TRUE = 1 # ловим
     RELEASE = 2 # поймали и отпускаем
 
-class Kick_Status(Enum):
-    Pass_Straight = 1
-    Pass_Turn_Kick= 2
-    Goal_Turn_Kick = 3
-    Goal_Straight = 4
-    Not_Kick = 5
-
 class BallStatus(Enum):
     Active = 0
     Passive = 1
@@ -99,9 +92,9 @@ class Strategy:
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 3
-        self.idx1 = 5
-        self.idx2 = 2
+        self.goalkeeper_idx = 0
+        self.idx1 = 2
+        self.idx2 = 1
         
         # Индексы роботов соперника
 
@@ -136,7 +129,6 @@ class Strategy:
         self.dist_to_ball = 450
 
         self.ball_status = BallStatus.Passive
-        self.kick_status = Kick_Status.Not_Kick
         self.ball_status_poly = BallStatusInsidePoly.NotInsidePoly
         self.kick_up_is_used = 1
 
@@ -146,29 +138,39 @@ class Strategy:
         self.sr_res: float = 0
         self.cnt: float = 0
         self.spin_start_time: float = time()
+        self.flagt = True
 
 
     def spin_test(self, field: fld.Field, actions: list[Optional[Action]], idx: int = 7) -> None:
-    
+        print(self.flagt)
         if (self.cnt != 0):
-            print(self.sr_res / self.cnt)
+            print(self.sr_res, "final")
         current_time = time()
 
-        el: float = int(current_time - self.spin_start_time) * 0.08
+        el: float = int(current_time - self.spin_start_time) * 0.00
         k = el
 
+        if (self.flagt):
+            const.BALL_GRABBED_DIST = 100
+        else:
+            const.BALL_GRABBED_DIST = 155
         if(not field.is_ball_in_ally_robot()):
             if self.flag_new_information_arg: 
                 self.flag_new_information_arg = False
-                self.sr_res += k
+                self.sr_res = k
                 self.cnt+=1
-            actions[idx] = Actions.BallGrab(3)
-            print("1")  
+            if (self.flagt):
+                print(const.BALL_GRABBED_DIST)
+                actions[idx] = Actions.BallGrab(3)
+            else:   
+                actions[idx] = Actions.Stop()
+            print("1", self.flagt) 
             return
         
 
+        print(k, "k")
         DRIBBLER_SPEED = 15
-        ANGULAR_SPEED = min(k, 3.5)
+        ANGULAR_SPEED = min(k, 4)
         self.flag_new_information_arg = True
         actions[idx] = Actions.VelocityWithDribbler(
             velocity=aux.Point(0, 0),
@@ -176,9 +178,48 @@ class Strategy:
             dribbler_speed=DRIBBLER_SPEED,
             control_angle_by_speed=True
         )
+        self.flagt = False
 
         return
-#
+    
+
+    def move_back_forth(self, field: fld.Field, actions: list[Optional[Action]], idx: int = 2) -> None:
+        current_time = time()
+
+        if not hasattr(self, 'bf_start_time'):
+            self.bf_start_time = current_time
+            self.bf_distance = 300  
+            self.bf_last_change = current_time
+
+        elapsed = current_time - self.bf_start_time
+
+        if current_time - self.bf_last_change > 2.0:
+            self.bf_distance += 100 
+            self.bf_last_change = current_time
+            if self.bf_distance > 1500:
+                self.bf_distance = 200  
+            print("Distance:", self.bf_distance, "mm")
+
+        direction = 1 if int(elapsed / 2) % 2 == 0 else -1
+
+        target_x = direction * self.bf_distance
+        robot_pos = field.allies[idx].get_pos()
+
+        DRIBBLER_SPEED = 15
+
+        actions[idx] = Actions.GoToPoint(
+            target_pos=aux.Point(target_x, robot_pos.y),
+            target_angle=0.45,
+            dribbler_speed=DRIBBLER_SPEED,
+            ball_interact=False,
+            ignore_ball=False
+        )
+
+        dir_text = "VPRAVO" if direction == 1 else "VLEVO"
+        print(dir_text, "rasstoyanie:", self.bf_distance, "mm, tek X:", robot_pos.x)
+        
+    
+    
     def process(self, field: fld.Field) -> list[Optional[Action]]:
         """
         Подсчет статических переменных (self)
@@ -323,7 +364,6 @@ class Strategy:
             self.process_defender(field, actions)
 
         elif field.game_state == GameStates.STOP:
-            self.flag = False
             pos_attacker1 =  self.ball + (field.ally_goal.center - self.ball).unity() * self.dist_to_ball
             angle_attacker1 = (self.ball - robot_position1).arg()
             pos_attacker2 = field.ally_goal.center + field.ally_goal.eye_forw * 800
@@ -355,50 +395,11 @@ class Strategy:
         return actions
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
-        
-        # #actions = self.process_attacker(field, actions)
-        # dist_ally = aux.dist(fld.find_nearest_robot(self.ball, field.active_allies(False)).get_pos(), self.ball)
-        # dist_enemy = aux.dist(fld.find_nearest_robot(self.ball, field.active_enemies(False)).get_pos(), self.ball)
 
-        '''
-        if (dist_ally > dist_enemy and ((self.ball.x < 0 and field.ally_goal.center.x < 0) or (self.ball.x > 0 and field.ally_goal.center.x > 0))):
-            self.process_defender(field, actions)
-        else:
-            self.process_attacker(field, actions)
-            pass
-        '''
-        # dist_ enemy = aux.dist(fld.find_nearest_robot(self.ball, field.active_enemies(False)).get_pos(), self.ball)
-        # dist_ally = aux.dist(fld.find_nearest_robot(self.ball, field.active_allies(False)).get_pos(), self.ball)
-
-        # if(
-        #     ((self.ball.x < 0 and field.ally_goal.center.x < 0) or (self.ball.x > 0 and field.ally_goal.center.x > 0))
-        #     and dist_enemy < dist_ally  ### Определяем чей робот ближе, наш или вражеский
-        # ):
-        #     self.process_defender(field, actions)
-        # else:
-        #     self.process_attacker(field, actions)
-
-
-        # if False and self.point_kick_goal is not None:
-        #     actions[0] = KickActions.Turn_Kick(self.point_kick_goal, (self.ball - field.allies[0].get_pos()).arg())
-        # else:
-        #     actions[0] = KickActions.Turn_Kick(field.ally_goal.center, (self.ball - field.allies[0].get_pos()).arg())
-
-        # robot2 = field.allies[3]
-        # robot3 = field.allies[7]
-        # self.construction_well(field, actions, [robot1, robot2, robot3], aux.Point(200, 300), aux.Point(-200, -300))
-        # print(robot1.get_pos(), robot2.get_pos(), robot3.get_pos())
-
-        #actions[0] = KickActions.Turn_Kick(field.ally_goal.center, (self.ball - field.allies[0].get_pos()).arg())
-
-        # block = Role.Block_Enemy_Pass(field, actions)
-        # block.push(field.allies[1])
-        # block.push(field.allies[2])
-        # block.process()
-
-        self.spin_test(field, actions, 7)
+        self.move_back_forth(field, actions) 
         
         return
+    
         
 
     def process_goalkeeper(self, field: fld.Field, actions: list[Optional[Action]]) ->  list[Optional[Action]]:
