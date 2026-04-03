@@ -178,7 +178,7 @@ class Strategy:
         )
 
         return
-    def line(self, field: fld.Field, actions: list[Optional[Action]], idx: int = 2) -> None:
+    def line(self, field: fld.Field, actions: list[Optional[Action]], idx: int = 5) -> None:
         robot_position1 = field.allies[self.idx1].get_pos()
         current_time = time()
 
@@ -186,36 +186,71 @@ class Strategy:
             self.bf_start_time = current_time
             self.bf_distance = 300  
             self.bf_last_change = current_time
+            self.bf_current_speed = 200  
+            self
 
         elapsed = current_time - self.bf_start_time
 
         if current_time - self.bf_last_change > 2.0:
             self.bf_distance += 100 
             self.bf_last_change = current_time
+            self.bf_current_speed += 25 #меняй
+            self.bf_current_speed = min(self.bf_current_speed, 800)  
             if self.bf_distance > 1500:
                 self.bf_distance = 200  
-            print("Distance:", self.bf_distance, "mm")
+                self
+                self.bf_current_speed = 200  
+            #print(f"Distance: {self.bf_distance},{self.bf_current_speed}")
 
         direction = 1 if int(elapsed / 2) % 2 == 0 else -1
-
-        target_x = direction * self.bf_distance
         robot_pos = field.allies[idx].get_pos()
 
-        DRIBBLER_SPEED = 15
-        robot_arg = (robot_position1.x, robot_position1.y - 90).arg()
+        if not hasattr(self, 'last_direction_change'):
+            self.last_direction_change = current_time
+            self.last_direction = direction
 
-        actions[idx] = Actions.GoToPoint(
-            target_pos=aux.Point(target_x, robot_pos.y),
-            target_angle=robot_arg,
+
+        time_since_change = current_time - self.last_direction_change
+
+
+        if time_since_change < 0.3:
+            speed_multiplier = time_since_change 
+            current_speed = self.bf_current_speed * min(speed_multiplier, 0.3)
+        else:
+            current_speed = self.bf_current_speed
+        
+        ball_pos = field.ball.get_pos()
+        dist_to_ball = aux.dist(robot_pos, ball_pos)
+
+        STOP_DISTANCE = 250
+
+        if dist_to_ball > STOP_DISTANCE:
+
+            actions[idx] = Actions.GoToPoint(robot_position1, 0)
+
+
+            return actions
+
+        current_velocity_x = direction * max(current_speed, 100)
+        DRIBBLER_SPEED = 15
+
+
+        actions[idx] = Actions.VelocityWithDribbler(
+            velocity=aux.Point(0, current_velocity_x),
+            angle=0,
             dribbler_speed=DRIBBLER_SPEED,
-            ball_interact=False,
-            ignore_ball=False
+            control_angle_by_speed=True
         )
 
-        dir_text = "VPRAVO" if direction == 1 else "VLEVO"
-        print(dir_text, "rasstoyanie:", self.bf_distance, "mm, tek X:", robot_pos.x)
-        
-    
+
+        print(current_velocity_x/1000)
+        print(current_speed/1000)
+
+        if field.is_ball_in(field.allies[self.goalkeeper_idx]):
+            ball_in_time = time()
+            #print(f"[{ball_in_time:.3f}]hhf {self.goalkeeper_idx}")
+
+        return actions
 #
     def process(self, field: fld.Field) -> list[Optional[Action]]:
         """
@@ -393,48 +428,8 @@ class Strategy:
         return actions
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
-        
-        # #actions = self.process_attacker(field, actions)
-        # dist_ally = aux.dist(fld.find_nearest_robot(self.ball, field.active_allies(False)).get_pos(), self.ball)
-        # dist_enemy = aux.dist(fld.find_nearest_robot(self.ball, field.active_enemies(False)).get_pos(), self.ball)
 
-        '''
-        if (dist_ally > dist_enemy and ((self.ball.x < 0 and field.ally_goal.center.x < 0) or (self.ball.x > 0 and field.ally_goal.center.x > 0))):
-            self.process_defender(field, actions)
-        else:
-            self.process_attacker(field, actions)
-            pass
-        '''
-        # dist_ enemy = aux.dist(fld.find_nearest_robot(self.ball, field.active_enemies(False)).get_pos(), self.ball)
-        # dist_ally = aux.dist(fld.find_nearest_robot(self.ball, field.active_allies(False)).get_pos(), self.ball)
-
-        # if(
-        #     ((self.ball.x < 0 and field.ally_goal.center.x < 0) or (self.ball.x > 0 and field.ally_goal.center.x > 0))
-        #     and dist_enemy < dist_ally  ### Определяем чей робот ближе, наш или вражеский
-        # ):
-        #     self.process_defender(field, actions)
-        # else:
-        #     self.process_attacker(field, actions)
-
-
-        # if False and self.point_kick_goal is not None:
-        #     actions[0] = KickActions.Turn_Kick(self.point_kick_goal, (self.ball - field.allies[0].get_pos()).arg())
-        # else:
-        #     actions[0] = KickActions.Turn_Kick(field.ally_goal.center, (self.ball - field.allies[0].get_pos()).arg())
-
-        # robot2 = field.allies[3]
-        # robot3 = field.allies[7]
-        # self.construction_well(field, actions, [robot1, robot2, robot3], aux.Point(200, 300), aux.Point(-200, -300))
-        # print(robot1.get_pos(), robot2.get_pos(), robot3.get_pos())
-
-        #actions[0] = KickActions.Turn_Kick(field.ally_goal.center, (self.ball - field.allies[0].get_pos()).arg())
-
-        # block = Role.Block_Enemy_Pass(field, actions)
-        # block.push(field.allies[1])
-        # block.push(field.allies[2])
-        # block.process()
-
-        self.spin_test(field, actions, 7)
+        self.line(field, actions) 
         
         return
         
