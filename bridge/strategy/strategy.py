@@ -183,7 +183,8 @@ class Strategy:
         return
     
 
-    def move_back_forth(self, field: fld.Field, actions: list[Optional[Action]], idx: int = 2) -> None:
+    def line(self, field: fld.Field, actions: list[Optional[Action]], idx: int = 2) -> None:
+        robot_position1 = field.allies[self.idx1].get_pos()
         current_time = time()
 
         if not hasattr(self, 'bf_start_time'):
@@ -206,10 +207,11 @@ class Strategy:
         robot_pos = field.allies[idx].get_pos()
 
         DRIBBLER_SPEED = 15
+        robot_arg = (robot_position1.x, robot_position1.y - 90).arg()
 
         actions[idx] = Actions.GoToPoint(
             target_pos=aux.Point(target_x, robot_pos.y),
-            target_angle=0.45,
+            target_angle=robot_arg,
             dribbler_speed=DRIBBLER_SPEED,
             ball_interact=False,
             ignore_ball=False
@@ -396,7 +398,7 @@ class Strategy:
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
 
-        self.move_back_forth(field, actions) 
+        self.line(field, actions) 
         
         return
     
