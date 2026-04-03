@@ -45,6 +45,13 @@ class FlagToPasses(Enum): #флаги для состояние приянтия
     TRUE = 1 # ловим
     RELEASE = 2 # поймали и отпускаем
 
+class Kick_Status(Enum):
+    Pass_Straight = 1
+    Pass_Turn_Kick= 2
+    Goal_Turn_Kick = 3
+    Goal_Straight = 4
+    Not_Kick = 5
+
 class BallStatus(Enum):
     Active = 0
     Passive = 1
@@ -139,39 +146,29 @@ class Strategy:
         self.sr_res: float = 0
         self.cnt: float = 0
         self.spin_start_time: float = time()
-        self.flagt = True
 
 
     def spin_test(self, field: fld.Field, actions: list[Optional[Action]], idx: int = 7) -> None:
-        print(self.flagt)
+    
         if (self.cnt != 0):
-            print(self.sr_res, "final")
+            print(self.sr_res / self.cnt)
         current_time = time()
 
-        el: float = int(current_time - self.spin_start_time) * 0.00
+        el: float = int(current_time - self.spin_start_time) * 0.08
         k = el
 
-        if (self.flagt):
-            const.BALL_GRABBED_DIST = 100
-        else:
-            const.BALL_GRABBED_DIST = 155
         if(not field.is_ball_in_ally_robot()):
             if self.flag_new_information_arg: 
                 self.flag_new_information_arg = False
-                self.sr_res = k
+                self.sr_res += k
                 self.cnt+=1
-            if (self.flagt):
-                print(const.BALL_GRABBED_DIST)
-                actions[idx] = Actions.BallGrab(3)
-            else:
-                actions[idx] = Actions.Stop()
-            print("1", self.flagt) 
+            actions[idx] = Actions.BallGrab(3)
+            print("1")  
             return
         
 
-        print(k, "k")
         DRIBBLER_SPEED = 15
-        ANGULAR_SPEED = min(k, 4)
+        ANGULAR_SPEED = min(k, 3.5)
         self.flag_new_information_arg = True
         actions[idx] = Actions.VelocityWithDribbler(
             velocity=aux.Point(0, 0),
@@ -179,9 +176,46 @@ class Strategy:
             dribbler_speed=DRIBBLER_SPEED,
             control_angle_by_speed=True
         )
-        self.flagt = False
 
         return
+    def line(self, field: fld.Field, actions: list[Optional[Action]], idx: int = 2) -> None:
+        robot_position1 = field.allies[self.idx1].get_pos()
+        current_time = time()
+
+        if not hasattr(self, 'bf_start_time'):
+            self.bf_start_time = current_time
+            self.bf_distance = 300  
+            self.bf_last_change = current_time
+
+        elapsed = current_time - self.bf_start_time
+
+        if current_time - self.bf_last_change > 2.0:
+            self.bf_distance += 100 
+            self.bf_last_change = current_time
+            if self.bf_distance > 1500:
+                self.bf_distance = 200  
+            print("Distance:", self.bf_distance, "mm")
+
+        direction = 1 if int(elapsed / 2) % 2 == 0 else -1
+
+        target_x = direction * self.bf_distance
+        robot_pos = field.allies[idx].get_pos()
+
+        DRIBBLER_SPEED = 15
+        robot_arg = (robot_position1.x, robot_position1.y - 90).arg()
+
+        actions[idx] = Actions.GoToPoint(
+            target_pos=aux.Point(target_x, robot_pos.y),
+            target_angle=robot_arg,
+            dribbler_speed=DRIBBLER_SPEED,
+            ball_interact=False,
+            ignore_ball=False
+        )
+
+        dir_text = "VPRAVO" if direction == 1 else "VLEVO"
+        print(dir_text, "rasstoyanie:", self.bf_distance, "mm, tek X:", robot_pos.x)
+        
+    
 #
     def process(self, field: fld.Field) -> list[Optional[Action]]:
         """
@@ -327,6 +361,7 @@ class Strategy:
             self.process_defender(field, actions)
 
         elif field.game_state == GameStates.STOP:
+            self.flag = False
             pos_attacker1 =  self.ball + (field.ally_goal.center - self.ball).unity() * self.dist_to_ball
             angle_attacker1 = (self.ball - robot_position1).arg()
             pos_attacker2 = field.ally_goal.center + field.ally_goal.eye_forw * 800
@@ -399,7 +434,7 @@ class Strategy:
         # block.push(field.allies[2])
         # block.process()
 
-        self.spin_test(field, actions, 2)
+        self.spin_test(field, actions, 7)
         
         return
         
