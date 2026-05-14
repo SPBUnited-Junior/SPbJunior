@@ -99,11 +99,18 @@ class Strategy:
 
         # Индексы роботов
 
+<<<<<<< Updated upstream
 <<<<<<< HEAD
         self.goalkeeper_idx = 8
         self.idx1 = 12
         self.idx2 = 10
 
+=======
+        self.goalkeeper_idx = 3
+        self.idx1 = 1
+        self.idx2 = 2
+        
+>>>>>>> Stashed changes
         # Индексы роботов соперника
 
         self.goalkeeper_idx_enemy = 0
