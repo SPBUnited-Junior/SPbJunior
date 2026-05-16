@@ -8,8 +8,8 @@ from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore
 from bridge.strategy.check_point import check_goal_point
-from bridge.strategy.flags import Kick_Status_Holder
-from bridge.strategy.flags import Kick_Status
+from bridge.strategy.flags import kick_status
+from bridge.strategy.flags import Robot_Status
 
 class Basic_Role:
 
@@ -33,7 +33,6 @@ class Role:
         def __init__(self, 
             field: fld.Field,
             actions: list[Optional[Action]],
-            kick_status: Kick_Status_Holder
         ) -> None:
         
             self.actions: list[Optional[Action]] = actions
@@ -49,88 +48,104 @@ class Role:
             if (robot.r_id == const.GK):
                 RuntimeError("In Role Attacker push GK")
             self.attacker = robot
-        
-        def check_cath_ball(self, pas_point: aux.Point) -> bool:
-            """
-            Проверяем летит ли мяч в сторону робота
-            """
-            ball_pos: aux.Point = self.field.ball.get_pos()
-            pos_cath = aux.closest_point_on_line(self.field.ball_start_point, ball_pos, pas_point, "R")
-            self.field.strategy_image.draw_circle(self.field.ball_start_point, (255, 0, 255), 30)
-
-            if(
-                (pos_cath is None
-                or aux.dist(pos_cath, pas_point) > const.DIST_CATCH_BALL
-                or aux.dist(ball_pos, pas_point) > const.DIST_TO_PASS
-                or self.field.ball.get_vel().mag() < const.VEL_TO_PASS)
-            ):
-                #self.passes_status = FlagToPasses.FALSE
-                return False
-            #self.passes_status = FlagToPasses.TRUE
-            return True
 
         def process(self) -> None:
-            print(self.kick_status.value)
+            # print("attacker Role: ", self.attacker)
+            # print(kick_status)
             if self.attacker is None: return
             if (len(self.field.pass_points) == 0): return
         
             pass_point: aux.Point = self.field.pass_points[0]
             ball_pos = self.field.ball.get_pos()
-            voltage = get_pass_voltage(aux.dist(ball_pos, self.attacker.get_pos()))
             angle_nearest_robot = (ball_pos - self.attacker.get_pos()).arg()
             optimal_point: aux.Point = self.field.pass_points[0]
+            # for rbt in self.field.active_allies(False):
+            #     if (self.attacker == rbt): continue
+            #     optimal_point = rbt.get_pos()
+            voltage = get_pass_voltage(aux.dist(ball_pos, optimal_point))
             point_kick_goal : Optional[aux.Point] = check_goal_point(self.field, ball_pos)[0]
-            if self.kick_status.value == Kick_Status.Goal_Turn_Kick  and self.field.is_ball_in_ally_robot():
+            if kick_status[self.attacker.r_id] == Robot_Status.Goal_Turn_Kick  and self.field.is_ball_in_ally_robot():
                 """
                 Если робот захватил мяч и бьет в ворота с Turn
                 """
-                print("Turn")
                 if point_kick_goal is None:
-                    self.kick_status.value = Kick_Status.Pass_Turn_Kick
+                    kick_status[self.attacker.r_id] = Robot_Status.Pass_Turn_Kick
                     self.actions[self.attacker.r_id] = KickActions.Turn_Kick(self.field.enemy_goal.center, angle_nearest_robot, voltage)
                 else:
                     self.actions[self.attacker.r_id] = KickActions.Turn_Kick(point_kick_goal, angle_nearest_robot)
 
-            elif self.kick_status.value == Kick_Status.Goal_Straight and self.field.is_ball_in_ally_robot():
+            elif kick_status[self.attacker.r_id] == Robot_Status.Goal_Straight and self.field.is_ball_in_ally_robot():
                 """
                 Если робот захватил мяч и бьет в ворота с Straight
                 """
-                print("Straigth")
-                if point_kick_goal is None:
+                angle = (optimal_point - ball_pos).arg()
+                diff_angle = aux.wind_down_angle(angle - self.attacker.get_angle())
+                if (point_kick_goal is None):
                     self.actions[self.attacker.r_id] = KickActions.Straight(self.field.enemy_goal.center)
                 else:
                     self.actions[self.attacker.r_id] = KickActions.Straight(point_kick_goal)
 
-            elif self.kick_status.value == Kick_Status.Pass_Straight and self.field.is_ball_in_ally_robot():
+                if(not aux.point_nearest_to_goal_hull(ball_pos) and point_kick_goal is None):
+                    kick_status[self.attacker.r_id] = Robot_Status.Pass_Turn_Kick
+
+            elif kick_status[self.attacker.r_id] == Robot_Status.Pass_Straight and self.field.is_ball_in_ally_robot():
                 """
                 Если робот захватил мяч и бьет пасс с Straight
                 """
+                angle = (optimal_point - ball_pos).arg()
+                diff_angle = aux.wind_down_angle(angle - self.attacker.get_angle())
+                if (diff_angle > 0.2 and not aux.point_nearest_to_goal_hull(ball_pos)):
+                    kick_status[self.attacker.r_id] = Robot_Status.Pass_Turn_Kick
                 self.actions[self.attacker.r_id] = KickActions.Straight(optimal_point, voltage)
             
-            elif self.kick_status.value == Kick_Status.Pass_Turn_Kick and self.field.is_ball_in_ally_robot():
+            elif kick_status[self.attacker.r_id] == Robot_Status.Pass_Turn_Kick and self.field.is_ball_in_ally_robot():
                 """
                 Если робот захватил мяч и бьет пасс с Turn
                 """
-                self.actions[self.attacker.r_id] = KickActions.Turn_Kick(optimal_point, angle_nearest_robot, voltage)
+                self.actions[self.attacker.r_id] = KickActions.Turn_Kick(optimal_point, angle_nearest_robot, voltage, True)
 
             else:
                 """
                 Если робот не бьет  мяч
                 """
-                if ((self.kick_status.value == Kick_Status.Pass_Straight or self.kick_status.value == Kick_Status.Pass_Turn_Kick) 
-                    and self.check_cath_ball(optimal_point) and not self.field.is_ball_in_ally_robot()):
+                if ((kick_status[self.attacker.r_id] == Robot_Status.Pass_Straight or kick_status[self.attacker.r_id] == Robot_Status.Pass_Turn_Kick) 
+                    and self.field.check_cath_ball(optimal_point) and not self.field.is_ball_in_ally_robot()):
 
                     arg = (ball_pos - self.attacker.get_pos()).arg()
-                    self.actions[self.attacker.r_id] = Actions.GoToPoint(self.field.pass_points[1], arg)
+                    if (len(self.field.pass_points) >= 1):
+                        self.actions[self.attacker.r_id] = Actions.GoToPoint(self.field.pass_points[1], arg)
 
                 elif point_kick_goal is not None and aux.dist(self.attacker.get_pos(), self.field.enemy_goal.center) < 3500:
-                    self.kick_status.value = Kick_Status.Goal_Turn_Kick
-                    self.actions[self.attacker.r_id] = KickActions.Turn_Kick(self.field.enemy_goal.center, angle_nearest_robot)
+                    angle = (point_kick_goal - ball_pos).arg()
+                    diff_angle = aux.wind_down_angle(angle - self.attacker.get_angle())
+
+                    if (aux.point_nearest_to_goal_hull(ball_pos) or
+                        (aux.dist(self.attacker.get_pos(), ball_pos) > 450 or diff_angle < 0.4 
+                        and (aux.dist(self.attacker.get_pos(), ball_pos) > 150 or kick_status[self.attacker.r_id] == Robot_Status.Goal_Straight))
+                    ):
+                        kick_status[self.attacker.r_id] = Robot_Status.Goal_Straight
+                        self.actions[self.attacker.r_id] = KickActions.Straight(point_kick_goal)
+                    else:
+                        kick_status[self.attacker.r_id] = Robot_Status.Goal_Turn_Kick
+                        self.actions[self.attacker.r_id] = KickActions.Turn_Kick(self.field.enemy_goal.center, angle_nearest_robot)
                 else:
-                    self.kick_status.value = Kick_Status.Pass_Turn_Kick
-                    #, angle_nearest_robot
-                    self.actions[self.attacker.r_id] = KickActions.Turn_Kick(optimal_point, angle_nearest_robot, voltage)
-            print(self.kick_status.value)
+
+                    angle = (optimal_point - ball_pos).arg()
+                    diff_angle = aux.wind_down_angle(angle - self.attacker.get_angle())
+
+                    if (aux.point_nearest_to_goal_hull(ball_pos) or
+                        (aux.dist(self.attacker.get_pos(), ball_pos) > 450 or diff_angle < 0.4 
+                        and (aux.dist(self.attacker.get_pos(), ball_pos) > 150 or kick_status[self.attacker.r_id] == Robot_Status.Goal_Straight))
+                    ):
+
+                        kick_status[self.attacker.r_id] = Robot_Status.Pass_Straight
+                        self.actions[self.attacker.r_id] = KickActions.Straight(optimal_point, voltage)
+                    else:
+
+                        kick_status[self.attacker.r_id] = Robot_Status.Pass_Turn_Kick
+                        self.actions[self.attacker.r_id] = KickActions.Turn_Kick(optimal_point, angle_nearest_robot, voltage)
+            self.field.strategy_image.draw_circle(optimal_point, (255, 0, 0), 100)
+            #print(kick_status[self.attacker.r_id])
 
 
     class Goalkeper(Basic_Role):
@@ -151,82 +166,81 @@ class Role:
             self.radius: float = 0
             self.start_angle: float = 0
             self.end_angle: float = 0
+            self.last_ball_pos: Optional[aux.Point] = None
+            self.ball_stopped_counter: int = 0
+            self.last_target_pos: Optional[aux.Point] = None
+            self.last_ball_angle: float = 0
+            self.point_angles: list[float] = []  # Только одна инициализация
             self.arc_points()
 
-        def arc_points(self, num_points: int = 30) -> None:
+        def arc_points(self, num_points: int = 60) -> None:
+            """Оптимизированное создание точек дуги"""
             g = self.field.ally_goal
 
             self.center = (g.up + g.down) / 2
-
             self.radius = aux.dist(self.center, g.frw)
-
-            field_direction = g.eye_forw
-
-            center_angle = field_direction.arg()
+            center_angle = g.eye_forw.arg()
 
             self.start_angle = center_angle - math.pi / 2
             self.end_angle = center_angle + math.pi / 2
 
-            self.points_on_arc = []
-            for i in range(num_points + 1):
-                t = i / num_points
-                angle = self.start_angle + (self.end_angle - self.start_angle) * t
+            # Вычисляем множитель радиуса 1 раз
+            ball_dist_to_goal = abs(self.field.ball.get_pos().x - self.field.ally_goal.center.x)
+            radius_mult = 1.6 if ball_dist_to_goal < 800 else 0.9
 
-                x = self.center.x + self.radius * math.cos(angle)
-                y = self.center.y + self.radius * math.sin(angle)
+            self.points_on_arc = []
+            self.point_angles = []
+
+            angle_step = (self.end_angle - self.start_angle) / num_points
+
+            for i in range(num_points + 1):
+                angle = self.start_angle + angle_step * i
+
+                cos_val = math.cos(angle)
+                sin_val = math.sin(angle)
+
+                x = self.center.x + self.radius * cos_val * radius_mult
+                y = self.center.y + self.radius * sin_val * radius_mult
 
                 self.points_on_arc.append(aux.Point(x, y))
+                self.point_angles.append(aux.wind_down_angle(angle))
+
         def defend_position(self, ball_pos: aux.Point) -> aux.Point:
-            goal_center = self.field.ally_goal.center
-
-            ball_dir = ball_pos - goal_center
-            if ball_dir.mag() < 0.1:
-                ball_dir = aux.Point(1, 0)
-            else:
-                ball_dir = ball_dir.unity()
-
-            target_angle = ball_dir.arg()
-            target_angle = aux.wind_down_angle(target_angle)
-
-            best_point = None
-            min_angle_diff = float('inf')
-
-            for point in self.points_on_arc:
-                point_angle = (point - self.center).arg()
-                point_angle = aux.wind_down_angle(point_angle)
-
-                diff = abs(aux.wind_down_angle(point_angle - target_angle))
-                if diff < min_angle_diff:
-                    min_angle_diff = diff
-                    best_point = point
-
-            if best_point is None:
-                best_point = self.points_on_arc[len(self.points_on_arc) // 2]
-
-            self.field.strategy_image.draw_line(goal_center, ball_pos, (255, 255, 0), 2)
-            self.field.strategy_image.draw_line(goal_center, best_point, (0, 255, 255), 2)
-            self.field.strategy_image.draw_circle(best_point, (255, 0, 0), 20)
-
-            return best_point
-
-        def patrol_position(self) -> aux.Point:
-            if not self.points_on_arc:
+            """Оптимизированный поиск позиции на дуге"""
+            if not self.point_angles or not self.points_on_arc:
+                # Если данные не инициализированы, возвращаем центр ворот
                 return self.field.ally_goal.center
 
-            target_pos = self.points_on_arc[self.current_point_idx]
+            goal_center = self.field.ally_goal.center
 
-            robot_pos = self.goalkeeper.get_pos()
-            if aux.dist(robot_pos, target_pos) < 50:
-                self.current_point_idx += self.direction
+            ball_dir_x = ball_pos.x - goal_center.x
+            ball_dir_y = ball_pos.y - goal_center.y
 
-                if self.current_point_idx >= len(self.points_on_arc):
-                    self.current_point_idx = len(self.points_on_arc) - 2
-                    self.direction = -1
-                elif self.current_point_idx < 0:
-                    self.current_point_idx = 1
-                    self.direction = 1
+            mag = math.hypot(ball_dir_x, ball_dir_y)
+            if mag < 0.1:
+                target_angle = 0.0
+            else:
+                target_angle = math.atan2(ball_dir_y, ball_dir_x)
 
-            return target_pos
+            target_angle = aux.wind_down_angle(target_angle)
+
+            best_idx = 0
+            min_diff = float('inf')
+
+            for i, point_angle in enumerate(self.point_angles):
+                diff = abs(aux.wind_down_angle(point_angle - target_angle))
+                if diff < min_diff:
+                    min_diff = diff
+                    best_idx = i
+
+            best_point = self.points_on_arc[best_idx]
+
+            if self.field.strategy_image:
+                self.field.strategy_image.draw_line(goal_center, ball_pos, (255, 255, 0), 2)
+                self.field.strategy_image.draw_line(goal_center, best_point, (0, 255, 255), 2)
+                self.field.strategy_image.draw_circle(best_point, (255, 0, 0), 20)
+
+            return best_point
 
         def process(self) -> None:
             if not self.points_on_arc:
@@ -238,84 +252,57 @@ class Role:
             ball_speed = ball_vel.mag()
             robot_pos = self.goalkeeper.get_pos()
 
-            dist_to_goal = aux.dist(ball_pos, self.field.ally_goal.center)
-            voltage_kick = 12
-            kick_target = self.field.enemy_goal.center
+            # Быстрая проверка остановки мяча
+            if ball_speed < 50:
+                self.ball_stopped_counter += 1
+                if self.ball_stopped_counter > 5 and self.last_ball_pos is None:
+                    self.last_ball_pos = ball_pos
+            else:
+                self.ball_stopped_counter = 0
+                self.last_ball_pos = None
 
             ball_in_robot = self.field.is_ball_in_ally_robot()
             ball_near_goal = aux.is_point_inside_poly(ball_pos, self.field.ally_goal.hull)
-            ball_stopped_near_goal = self.field.is_ball_stop_near_goal()
 
             if ball_in_robot and ball_near_goal:
-                self.actions[self.gk_id] = KickActions.Straight(kick_target, voltage_kick, False, True)
+                self.actions[self.gk_id] = KickActions.Straight(self.field.enemy_goal.center, 12, False, True)
                 kick_status[self.gk_id] = Robot_Status.Kick_in_goal_hull
-                self.field.strategy_image.draw_circle(robot_pos, (255, 0, 0), 30)
                 return
 
-            if ball_stopped_near_goal:
-                g_up_xy_goal = self.field.enemy_goal.up - self.field.enemy_goal.eye_up * 40
-                g_down_xy_goal = self.field.enemy_goal.down + self.field.enemy_goal.eye_up * 40
+            if self.field.is_ball_stop_near_goal():
+                g_up = self.field.enemy_goal.up - self.field.enemy_goal.eye_up * 40
+                g_down = self.field.enemy_goal.down + self.field.enemy_goal.eye_up * 40
+                enemy_gk_pos = self.field.enemies[self.field.enemy_gk_id].get_pos()
 
-                up_goal = aux.dist(g_up_xy_goal, self.field.enemies[self.field.enemy_gk_id].get_pos())
-                down_goal = aux.dist(self.field.enemies[self.field.enemy_gk_id].get_pos(), g_down_xy_goal)
+                up_dist = aux.dist(g_up, enemy_gk_pos)
+                down_dist = aux.dist(enemy_gk_pos, g_down)
+                kick_target = g_up if up_dist > down_dist else g_down
 
-                if up_goal > down_goal:
-                    kick_target = g_up_xy_goal
-                else:
-                    kick_target = g_down_xy_goal
-
-                self.actions[self.gk_id] = KickActions.Straight(kick_target, voltage_kick, False, True)
+                self.actions[self.gk_id] = KickActions.Straight(kick_target, 12, False, True)
                 kick_status[self.gk_id] = Robot_Status.Kick_in_goal_hull
-                self.field.strategy_image.draw_circle(robot_pos, (255, 165, 0), 30)
                 return
 
-            if dist_to_goal > 2000 and ball_speed < 100:
-                self.defend_mode = False
+
+            # Выбор позиции 
+            if self.last_ball_pos is not None:
+                if self.last_target_pos is None or aux.dist(self.last_ball_pos, ball_pos) > 10:
+                    self.last_target_pos = self.defend_position(self.last_ball_pos)
+                target_pos = self.last_target_pos
             else:
-                self.defend_mode = True
-
-            if self.defend_mode:
-                target_pos = self.defend_position(ball_pos)
-
+                # Для движущегося мяча
                 if ball_speed > 200:
                     time_to_ball = aux.dist(robot_pos, ball_pos) / max(ball_speed, 0.1)
                     predicted_ball = ball_pos + ball_vel * min(time_to_ball, 0.5)
                     target_pos = self.defend_position(predicted_ball)
-                    self.field.strategy_image.draw_circle(predicted_ball, (255, 165, 0), 15)
-            else:
-                target_pos = self.patrol_position()
+                else:
+                    target_pos = self.defend_position(ball_pos)
+                self.last_target_pos = None  # Сбрасываем кэш
 
             angle_to_ball = (ball_pos - robot_pos).arg()
-
             self.actions[self.gk_id] = Actions.GoToPoint(target_pos, angle_to_ball)
             kick_status[self.gk_id] = Robot_Status.Not_Kick
-
-            self.field.strategy_image.draw_circle(target_pos, (0, 255, 255), 15)
-            self.zone()
-
-        def zone(self) -> None:
-            if not self.points_on_arc:
-                return
-
-            g = self.field.ally_goal
-            self.field.strategy_image.draw_circle(g.up, (0, 255, 0), 8)
-            self.field.strategy_image.draw_circle(g.down, (0, 255, 0), 8)
-            self.field.strategy_image.draw_circle(g.frw, (255, 0, 0), 8)
-            self.field.strategy_image.draw_circle(g.center, (255, 255, 0), 8)
-            self.field.strategy_image.draw_circle(self.center, (255, 0, 255), 10)
-
-            last_point = None
-            for point in self.points_on_arc:
-                self.field.strategy_image.draw_circle(point, (0, 200, 0), 4)
-                if last_point is not None:
-                    self.field.strategy_image.draw_line(last_point, point, (0, 200, 0), 2)
-                last_point = point
-
-            goal_center = self.field.ally_goal.center
-            for point in self.points_on_arc[::5]:
-                self.field.strategy_image.draw_line(goal_center, point, (100, 100, 100), 1)
     class Block_Enemy_Pass(Basic_Role):
-    
+
         def push(self, robot: rbt.Robot) -> None:
             """
             Добавляем робота в роль
@@ -378,6 +365,7 @@ class Role:
                     used[ally_rbt.r_id] = True
                     angle = (ball_pos - block_point).arg()
                     self.actions[ally_rbt.r_id] = Actions.GoToPoint(block_point, angle)
+                    kick_status[ally_rbt.r_id] = Robot_Status.Not_Kick
                     min_dist = self.block_robot(idx + 1, min_dist, max_dist, used)
                     max_dist = max_dist_old
                     used[ally_rbt.r_id] = False
@@ -400,7 +388,7 @@ class Role:
 
 
         def process(self) -> None:
-            print(*self.field.pass_points)
+            #print("Block pass Role: ", *self.ally_robots)
             self.build_list()
             if (len(self.enemy_robots) == len(self.ally_robots)):
                 self.block_robot()
@@ -445,10 +433,12 @@ class Role:
 
         def process(self) -> None:
             if (len(self.ally_robots) == 0): return
+            #print("Defer Role: ", *self.ally_robots)
 
             ball_pos = self.field.ball.get_pos()
             for rbt in self.ally_robots:
                 pos = self._circle_to_two_tangents(80, ball_pos, self.field.ally_goal.down, self.field.ally_goal.up, rbt.get_pos())
+                kick_status[rbt.r_id] = Robot_Status.Not_Kick
                 self.actions[rbt.r_id] = Actions.GoToPoint(pos, (ball_pos - rbt.get_pos()).arg())
 
     class Pass(Basic_Role):
@@ -467,45 +457,38 @@ class Role:
             if (robot.r_id == const.GK):
                 RuntimeError("In Role Pass push GK")
             self.ally_robots.append(robot)
-
-        def check_cath_ball(self, pas_point: aux.Point) -> bool:
-            """
-            Проверяем летит ли мяч в сторону робота
-            """
-            ball_pos: aux.Point = self.field.ball.get_pos()
-            pos_cath = aux.closest_point_on_line(self.field.ball_start_point, ball_pos, pas_point, "R")
-            self.field.strategy_image.draw_circle(self.field.ball_start_point, (255, 0, 255), 30)
-
-            if(
-                (pos_cath is None
-                or aux.dist(pos_cath, pas_point) > const.DIST_CATCH_BALL
-                or aux.dist(ball_pos, pas_point) > const.DIST_TO_PASS
-                or self.field.ball.get_vel().mag() < const.VEL_TO_PASS)
-            ):
-                return False
-            return True
-        
         
         def process(self) -> None:
             if (len(self.field.pass_points) == 0): return
-            print(self.ally_robots, "pass list")
+            #print("Pass Role: ", *self.ally_robots)
             ball_pos = self.field.ball.get_pos()
             idx : int = 0
+            is_catch : bool = False
             for robot in self.ally_robots:
 
-                if (self.check_cath_ball(robot.get_pos())):
+                if (not is_catch and self.field.check_cath_ball(robot.get_pos()) and check_status_not_kick(self.field)):
                     pos = aux.closest_point_on_line(self.field.ball_start_point, ball_pos, robot.get_pos(), "R")
-                    self.actions[robot.r_id] = Actions.CatchBall(pos, (ball_pos - robot.get_pos()).arg(), 8)
+                    kick_status[robot.r_id] = Robot_Status.Not_Kick
+                    self.actions[robot.r_id] = Actions.CatchBall(pos, (ball_pos - robot.get_pos()).arg(), 12)
+                    is_catch = True
                 
                 else:
                     if (idx >= len(self.field.pass_points)): return
                     pos = self.field.pass_points[idx]
+                    kick_status[robot.r_id] = Robot_Status.Not_Kick
                     self.actions[robot.r_id] = Actions.GoToPoint(pos, (ball_pos - robot.get_pos()).arg())
 
                 idx+=1
 
 
 
+def check_status_not_kick(
+        field: fld.Field,
+    ) -> bool:
+    for rbt in field.active_allies(True):
+        if (kick_status[rbt.r_id] != Robot_Status.Not_Kick):
+            return False
+    return True
 
 def go_to_position(
     field: fld.Field, 
