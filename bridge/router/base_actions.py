@@ -343,7 +343,7 @@ class Actions:
 
 
     class Correct(Action):
-        """""" 
+        """включается в момент достигнутой разницы между углами""" 
         def __init__(self, target_angle: float) -> None:
             self.target_angle = target_angle
 

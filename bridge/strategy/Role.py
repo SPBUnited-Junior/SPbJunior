@@ -41,12 +41,13 @@ class Role:
             self.kick_status = kick_status
 
         def push(self, robot: rbt.Robot) -> None:
+            # выбор атакующего в игре
             is_ally: bool = robot.color == self.field.ally_color
 
             if (not is_ally):
-                RuntimeError("In Role Attacker push enemy robot")
+                raise RuntimeError("In Role Attacker push enemy robot")
             if (robot.r_id == const.GK):
-                RuntimeError("In Role Attacker push GK")
+                raise RuntimeError("In Role Attacker push GK")
             self.attacker = robot
 
         def process(self) -> None:
@@ -191,7 +192,12 @@ class Role:
                 y = self.center.y + self.radius * math.sin(angle)
 
                 self.points_on_arc.append(aux.Point(x, y))
+                
         def defend_position(self, ball_pos: aux.Point) -> aux.Point:
+            """
+            1. Смотрим угол между ОХ и вектором мяча к вратарю
+            2. Выбираем лучшую точку
+            """
             goal_center = self.field.ally_goal.center
 
             ball_dir = ball_pos - goal_center
@@ -225,6 +231,7 @@ class Role:
             return best_point
 
         def patrol_position(self) -> aux.Point:
+            #патрулирование вратарской зоны
             if not self.points_on_arc:
                 return self.field.ally_goal.center
 
@@ -341,9 +348,9 @@ class Role:
             is_ally: bool = robot.color == self.field.ally_color
 
             if (not is_ally):
-                RuntimeError("In Role Block_Enemy_Pass push enemy robot")
+                raise RuntimeError("In Role Block_Enemy_Pass push enemy robot")
             if (robot.r_id == const.GK):
-                RuntimeError("In Role Block_Enemy_Pass push GK")
+                raise RuntimeError("In Role Block_Enemy_Pass push GK")
             self.ally_robots.append(robot)
         
 
@@ -374,7 +381,7 @@ class Role:
             used: list[bool] = [False] * 15
         ) -> float:
             """
-            (не) Оптимально  распределяет роботов для блокировки пасов
+            Оптимально  распределяет роботов для блокировки пасов
             """
 
             ball_pos = self.field.ball.get_pos()
@@ -401,6 +408,7 @@ class Role:
             return min_dist
         
         def build_list(self) -> None:
+            #построение списка энеми роботов от расстояния к мячу
             ball_pos = self.field.ball.get_pos()
 
             size = len(self.ally_robots)
@@ -434,9 +442,9 @@ class Role:
             is_ally: bool = robot.color == self.field.ally_color
 
             if (not is_ally):
-                RuntimeError("In Role Defer push enemy robot")
+                raise RuntimeError("In Role Defer push enemy robot")
             if (robot.r_id == const.GK):
-                RuntimeError("In Role Defer push GK")
+                raise RuntimeError("In Role Defer push GK")
             self.ally_robots.append(robot)
 
         def _circle_to_two_tangents(
@@ -483,9 +491,9 @@ class Role:
             is_ally: bool = robot.color == self.field.ally_color
 
             if (not is_ally):
-                RuntimeError("In Role Pass push enemy robot")
+                raise RuntimeError("In Role Pass push enemy robot")
             if (robot.r_id == const.GK):
-                RuntimeError("In Role Pass push GK")
+                raise RuntimeError("In Role Pass push GK")
             self.ally_robots.append(robot)
         
         def process(self) -> None:
