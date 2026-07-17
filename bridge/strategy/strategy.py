@@ -98,8 +98,8 @@ class Strategy:
         
         # Индексы роботов соперника
 
-        self.goalkeeper_idx_enemy = 3
-        self.idx_enemy1 = 4
+        self.goalkeeper_idx_enemy = 0
+        self.idx_enemy1 = 6
         self.idx_enemy2 = 7
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
@@ -298,23 +298,9 @@ class Strategy:
                     Block.push(rbt)
 
         elif field.game_state == GameStates.STOP:
-            self.flag = False
-            pos_attacker1 =  self.ball + (field.ally_goal.center - self.ball).unity() * self.dist_to_ball
-            angle_attacker1 = (self.ball - robot_position1).arg()
-            Pass.push(field.allies[self.idx2])
-            angle_attacker2 = (self.ball - robot_position2).arg()
+            actions[self.idx1] = Actions.GoToPoint(aux.Point(0,0), (field.ball.get_pos() - robot_position1).arg())
+            actions[self.idx2] = Actions.GoToPoint(aux.point_on_line(field.ball.get_pos(), robot_position_goalkeeper, aux.dist(self.ball, robot_position_goalkeeper)/2), (self.ball - robot_position2).arg())
 
-            if aux.dist(pos_attacker1, self.ball) < 500:
-                pos_attacker1 = self.ball + (field.ally_goal.center - self.ball).unity() * self.dist_to_ball
-
-            if aux.dist(field.allies[self.idx2].get_pos(), self.ball) < 500:
-                pos_attacker2 = (robot_position2 - self.ball).unity() * 500
-
-            if abs(field.enemy_goal.center.x - pos_attacker1.x) < 800:
-                pos_attacker1 = field.enemy_goal.up - field.ally_goal.eye_forw * 800
-
-            actions[self.idx1] = Actions.GoToPoint(pos_attacker1, angle_attacker1)
-            actions[self.idx2] = Actions.GoToPoint(pos_attacker2, angle_attacker2)
         
 
         if abs(self.ball.x) > 2250 or abs(self.ball.y) > 1500:
@@ -404,17 +390,45 @@ class Strategy:
                     if rbt == ally_nearest_robot: continue
                     Block.push(rbt)
 
-        
-        # Block.process()
-        # Pass.process()
-        # Defer.process()
-        # Attacker.process()
+        '''
+        Block.process()
+        Pass.process()
+        Defer.process()
+        Attacker.process()
+        '''
+        '''
         field.strategy_image.draw_circle(self.ball, (0, 0, 0), 7)
         if (check_goal_point(field, self.ball)[0] is None):
-            actions[1] = KickActions.Turn_Kick(field.enemy_goal.center, 3)
+            actions[7] = KickActions.Turn_Kick(field.enemy_goal.center, 3)
         else:
-            actions[1] = KickActions.Turn_Kick(check_goal_point(field, self.ball)[0], 3)
+            actions[7] = KickActions.Turn_Kick(check_goal_point(field, self.ball)[0], 3)
         # print(field.ball.get_vel().mag())
+        '''
+        p1 = aux.Point(self.ball.x - 10, self.ball.y)
+        angleTest = aux.get_angle_between_points(p1, self.ball, field.ally_goal.center)
+        angle1 = aux.get_angle_between_points(field.ally_goal.up,self.ball,field.ally_goal.down)
+        field.strategy_image.draw_line(self.ball, field.ally_goal.up, (0,0,0), 5)
+        #field.strategy_image.send_telemetry('angle_half', str(angle1/2))
+        field.strategy_image.draw_line(self.ball, field.ally_goal.down, (0,0,0), 5)
+        
+        vec1 = self.ball + (field.ally_goal.down-self.ball).unity() * 2000
+        vec2 = self.ball + (field.ally_goal.up-self.ball).unity() * 2000
+        distLine = aux.dist(vec1,vec2)
+        vec1 = self.ball + (field.ally_goal.down-self.ball).unity() * 2000*350/distLine
+        vec2 = self.ball + (field.ally_goal.up-self.ball).unity() * 2000*350/distLine
+      
+        field.strategy_image.draw_line(vec1, vec2, (255,255,255), 10)
+        point1r = aux.point_on_line(vec1, vec2, aux.dist(vec1,vec2)/2)
+        point2rUp = aux.closest_point_on_line(self.ball, field.ally_goal.up, aux.point_on_line(vec1, vec2, aux.dist(vec1,vec2)/2), "L")
+        point2rDown = aux.closest_point_on_line(self.ball, field.ally_goal.down, aux.point_on_line(vec1, vec2, aux.dist(vec1,vec2)/2), "L")
+
+        field.strategy_image.draw_line(self.ball, (aux.point_on_line(vec1, vec2, aux.dist(vec1,vec2)/2)), (0,0,255), 20)
+        field.strategy_image.draw_line(aux.point_on_line(vec1, vec2, aux.dist(vec1,vec2)/2), aux.closest_point_on_line(self.ball, field.ally_goal.down, aux.point_on_line(vec1, vec2, aux.dist(vec1,vec2)/2), "L"), (255,0,0), 10)
+        field.strategy_image.draw_line(aux.point_on_line(vec1, vec2, aux.dist(vec1,vec2)/2), aux.closest_point_on_line(self.ball, field.ally_goal.up, aux.point_on_line(vec1, vec2, aux.dist(vec1,vec2)/2), "L"), (255,0,0), 10)
+        gip_dist = 75/(angle1/2)
+        field.strategy_image.send_telemetry('gip_dist', str(gip_dist))
+        actions[2] = Actions.GoToPointIgnore(aux.Point((point1r.x + point2rUp.x)/2,(point1r.y + point2rUp.y)/2), (self.ball - field.b_team[2].get_pos()).arg())
+        actions[0] = Actions.GoToPointIgnore(aux.Point((point1r.x + point2rDown.x)/2,(point1r.y + point2rDown.y)/2), (self.ball - field.b_team[0].get_pos()).arg())
 
 
     #### Вспомогательные функции ####
@@ -631,3 +645,4 @@ class Strategy:
         center = center.unity() * (radius / abs(sin_val))
         center = aux.rotate(center, -angle)
         return aux.closest_point_on_line(aux.Point(point.x - 100, point.y), center + point, robot, "S") #center + point  # Используем point как исходную точку (аналог ball в оригинале)
+    

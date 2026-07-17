@@ -45,9 +45,9 @@ class Role:
             is_ally: bool = robot.color == self.field.ally_color
 
             if (not is_ally):
-                raise RuntimeError("In Role Attacker push enemy robot")
+                RuntimeError("In Role Attacker push enemy robot")
             if (robot.r_id == const.GK):
-                raise RuntimeError("In Role Attacker push GK")
+                RuntimeError("In Role Attacker push GK")
             self.attacker = robot
 
         def process(self) -> None:
@@ -159,26 +159,25 @@ class Role:
             super().__init__(field, actions)
             self.gk_id: int = field.gk_id
             self.goalkeeper: rbt.Robot = field.allies[self.gk_id]
-            self.points_on_arc: list[aux.Point] = []
-            self.current_point_idx: int = 0
-            self.direction: int = 1
-            self.defend_mode: bool = True
+            self.points_on_arc: list[aux.Point] = [] # лист с точками на дуге
+            self.current_point_idx: int = 0 # порядковый номер точки на которой находится робот
+            self.direction: int = 1 # направление движения по дуге
+            self.defend_mode: bool = True # защита или афк точка
             self.center: aux.Point = aux.Point(0, 0)
-            self.radius: float = 0
+            self.radius: float = 0 # длина от центра ворот, до центра зоны
             self.start_angle: float = 0
             self.end_angle: float = 0
             self.arc_points()
 
         def arc_points(self, num_points: int = 30) -> None:
+            #Генерация очек на опр. дуге
             g = self.field.ally_goal
 
-            self.center = (g.up + g.down) / 2
+            self.center = (g.up + g.down) / 2 # центр ворот как среднее между верхней и нижней точками
 
             self.radius = aux.dist(self.center, g.frw)
 
-            field_direction = g.eye_forw
-
-            center_angle = field_direction.arg()
+            center_angle = math.pi
 
             self.start_angle = center_angle - math.pi / 2
             self.end_angle = center_angle + math.pi / 2
@@ -192,7 +191,7 @@ class Role:
                 y = self.center.y + self.radius * math.sin(angle)
 
                 self.points_on_arc.append(aux.Point(x, y))
-                
+
         def defend_position(self, ball_pos: aux.Point) -> aux.Point:
             """
             1. Смотрим угол между ОХ и вектором мяча к вратарю
@@ -348,9 +347,9 @@ class Role:
             is_ally: bool = robot.color == self.field.ally_color
 
             if (not is_ally):
-                raise RuntimeError("In Role Block_Enemy_Pass push enemy robot")
+                RuntimeError("In Role Block_Enemy_Pass push enemy robot")
             if (robot.r_id == const.GK):
-                raise RuntimeError("In Role Block_Enemy_Pass push GK")
+                RuntimeError("In Role Block_Enemy_Pass push GK")
             self.ally_robots.append(robot)
         
 
@@ -442,9 +441,9 @@ class Role:
             is_ally: bool = robot.color == self.field.ally_color
 
             if (not is_ally):
-                raise RuntimeError("In Role Defer push enemy robot")
+                RuntimeError("In Role Defer push enemy robot")
             if (robot.r_id == const.GK):
-                raise RuntimeError("In Role Defer push GK")
+                RuntimeError("In Role Defer push GK")
             self.ally_robots.append(robot)
 
         def _circle_to_two_tangents(
@@ -491,9 +490,9 @@ class Role:
             is_ally: bool = robot.color == self.field.ally_color
 
             if (not is_ally):
-                raise RuntimeError("In Role Pass push enemy robot")
+                RuntimeError("In Role Pass push enemy robot")
             if (robot.r_id == const.GK):
-                raise RuntimeError("In Role Pass push GK")
+                RuntimeError("In Role Pass push GK")
             self.ally_robots.append(robot)
         
         def process(self) -> None:
@@ -536,7 +535,7 @@ def go_to_position(
     idx: int = 0, 
     min_dist: float = 1e5, 
     max_dist: float = 0,
-    used: list[bool] = [False] * 15
+    used: list[bool] = [False] * 15 #количество юзаемых роботов
 ) -> float:
     """
     Распределяет позиции по роботам,
@@ -557,7 +556,7 @@ def go_to_position(
             min_dist = go_to_position(field, actions, robots, list_pos, idx + 1, min_dist, max_dist)
             used[rbt.r_id] = False
     return min_dist
-        
+
 def construction_well(
     field: fld.Field, 
     actions: list[Optional[Action]],
