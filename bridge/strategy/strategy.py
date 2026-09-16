@@ -9,10 +9,13 @@ from enum import Enum
 from bridge import const
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.const import State as GameStates
-from bridge.router.base_actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore
+from bridge.router.base_actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore  
 from bridge.strategy.check_point import check_goal_point
 from bridge.strategy.Role import Role
 from bridge.strategy.flags import kick_status
+
+from bridge.strategy.ricochet import draw_ricochet
+
 
 
 """
@@ -92,15 +95,15 @@ class Strategy:
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 5
+        self.goalkeeper_idx = 0
         self.idx1 = 1
-        self.idx2 = 3
+        self.idx2 = 2
         
         # Индексы роботов соперника
 
-        self.goalkeeper_idx_enemy = 3
-        self.idx_enemy1 = 4
-        self.idx_enemy2 = 7
+        self.goalkeeper_idx_enemy = 0
+        self.idx_enemy1 = 1
+        self.idx_enemy2 = 2
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -134,6 +137,10 @@ class Strategy:
 
         #массив для функции go_to_position
         self.used = [False] * const.ROBOTS_MAX_COUNT
+        self.flag_new_information_arg: bool = False
+        self.sr_res: float = 0
+        self.cnt: float = 0
+        self.spin_start_time: float = time()
 
         self.Block: Optional[Role.Block_Enemy_Pass] = None
         self.Attacker: Optional[Role.Attacker]  = None
@@ -147,7 +154,11 @@ class Strategy:
         Подсчет статических переменных (self)
         
         """
+        self.ball = aux.Point(field.ball.get_pos().x, field.ball.get_pos().y)
+        field.strategy_image.draw_circle(self.ball, (255, 255, 255), 30)
 
+        draw_ricochet(field, self.ball)
+    
         field.active_enemies # масив роботов на поле
         self.old_ball = field.ball_start_point or aux.Point(0, 0)
 
@@ -313,6 +324,7 @@ class Strategy:
             if abs(field.enemy_goal.center.x - pos_attacker1.x) < 800:
                 pos_attacker1 = field.enemy_goal.up - field.ally_goal.eye_forw * 800
 
+            pos_attacker2 = self.ball + (field.ally_goal.center - self.ball).unity() * self.dist_to_ball
             actions[self.idx1] = Actions.GoToPoint(pos_attacker1, angle_attacker1)
             actions[self.idx2] = Actions.GoToPoint(pos_attacker2, angle_attacker2)
         
@@ -331,24 +343,30 @@ class Strategy:
         
         return actions
 
+
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         Block = Role.Block_Enemy_Pass(field, actions)
         Attacker = Role.Attacker(field, actions)
         Pass = Role.Pass(field, actions)
         Defer = Role.Defer(field, actions)
         Goalkeeper = Role.Goalkeper(field, actions)
+        Ricochet = Role.RicochetAttacker(field, actions)
+
+        print(111)
+        
+        
         
 
-        ally_nearest_robot = fld.find_nearest_robot(self.ball, field.active_allies(False))
-        enemy_nearest_robot = fld.find_nearest_robot(self.ball, field.active_enemies(False))
-        ally_dist = aux.dist(ally_nearest_robot.get_pos(), self.ball)
-        enemy_dist = aux.dist(enemy_nearest_robot.get_pos(), self.ball)
-        dist_between_enemy_robots : float = 0
-        for rbt in field.active_enemies(False):
-            if (rbt == enemy_nearest_robot): continue
-            dist_between_enemy_robots = aux.dist(enemy_nearest_robot.get_pos(), rbt.get_pos())
-
-        robot = ally_nearest_robot
+        #ally_nearest_robot = fld.find_nearest_robot(self.ball, field.active_allies(False))
+        #enemy_nearest_robot = fld.find_nearest_robot(self.ball, field.active_enemies(False))
+        #ally_dist = aux.dist(ally_nearest_robot.get_pos(), self.ball)
+        #enemy_dist = aux.dist(enemy_nearest_robot.get_pos(), self.ball)
+        #dist_between_enemy_robots : float = 0
+        #for rbt in field.active_enemies(False):
+        #    if (rbt == enemy_nearest_robot): continue
+        #    dist_between_enemy_robots = aux.dist(enemy_nearest_robot.get_pos(), rbt.get_pos())
+#
+        #robot = ally_nearest_robot
 
         # flag = False
         # for rbt in field.active_allies(False):
@@ -371,53 +389,65 @@ class Strategy:
 
         #         Attacker.push(robot)
 
-        flag = False
-        for rbt in field.active_allies(False):
-            if (field.check_cath_ball(rbt.get_pos())):
-                flag = True
-
-        if (flag and field.is_ball_not_in_robot()):
-            for rbt in field.active_allies(False):
-                Pass.push(rbt)
-
-        else:
-            if (ally_dist - enemy_dist < 100):
-                Attacker.push(ally_nearest_robot)   
-                for rbt in field.active_allies(False):
-                    if rbt == ally_nearest_robot: continue
-                    Pass.push(rbt)
-            elif (aux.dist(field.ally_goal.center, field.ball.get_pos()) < 1200):
-                Defer.push(ally_nearest_robot)
-                for rbt in field.active_allies(False):
-                    if rbt == ally_nearest_robot: continue
-                    Block.push(rbt)
-
-            elif(dist_between_enemy_robots < 300):
-                Attacker.push(ally_nearest_robot)
-                for rbt in field.active_allies(False):
-                    if rbt == ally_nearest_robot: continue
-                    Pass.push(rbt)
-                
-            else:
-                Attacker.push(ally_nearest_robot)
-                for rbt in field.active_allies(False):
-                    if rbt == ally_nearest_robot: continue
-                    Block.push(rbt)
-
+        #flag = False
+        #for rbt in field.active_allies(False):
+        #    if (field.check_cath_ball(rbt.get_pos())):
+        #        flag = True
+#
+        #if (flag and field.is_ball_not_in_robot()):
+        #    for rbt in field.active_allies(False):
+        #        Pass.push(rbt)
+#
+        #else:
+        #    if (ally_dist - enemy_dist < 100):
+        #        Attacker.push(ally_nearest_robot)   
+        #        for rbt in field.active_allies(False):
+        #            if rbt == ally_nearest_robot: continue
+        #            Pass.push(rbt)
+        #    elif (aux.dist(field.ally_goal.center, field.ball.get_pos()) < 1200):
+        #        Defer.push(ally_nearest_robot)
+        #        for rbt in field.active_allies(False):
+        #            if rbt == ally_nearest_robot: continue
+        #            Block.push(rbt)
+#
+        #    elif(dist_between_enemy_robots < 300):
+        #        Attacker.push(ally_nearest_robot)
+        #        for rbt in field.active_allies(False):
+        #            if rbt == ally_nearest_robot: continue
+        #            Pass.push(rbt)
+        #        
+        #    else:
+        #        Attacker.push(ally_nearest_robot)
+        #        for rbt in field.active_allies(False):
+        #            if rbt == ally_nearest_robot: continue
+        #            Block.push(rbt)
+#
         
         # Block.process()
         # Pass.process()
         # Defer.process()
         # Attacker.process()
+        #рикошет
+        ally_nearest_robot = fld.find_nearest_robot(self.ball, field.active_allies(False))
+        
+        if ally_nearest_robot is not None:
+            Ricochet.push(ally_nearest_robot)
+            Ricochet.process()
+
+        draw_ricochet(field, self.ball)
         field.strategy_image.draw_circle(self.ball, (0, 0, 0), 7)
-        if (check_goal_point(field, self.ball)[0] is None):
-            actions[1] = KickActions.Turn_Kick(field.enemy_goal.center, 3)
-        else:
-            actions[1] = KickActions.Turn_Kick(check_goal_point(field, self.ball)[0], 3)
+        field.strategy_image.draw_circle(self.ball, (0, 0, 0), 7)
+
+        #if (check_goal_point(field, self.ball)[0] is None):
+        #    actions[1] = KickActions.Turn_Kick(field.enemy_goal.center, 3)
+        #else:
+        #    actions[1] = KickActions.Turn_Kick(check_goal_point(field, self.ball)[0], 3)
         # print(field.ball.get_vel().mag())
 
 
     #### Вспомогательные функции ####
+
+
     
     def _process_goalkeeper(
         self,

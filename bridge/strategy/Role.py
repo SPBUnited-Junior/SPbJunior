@@ -10,6 +10,7 @@ from bridge.router.base_actions import Action, Actions, KickActions, get_pass_vo
 from bridge.strategy.check_point import check_goal_point
 from bridge.strategy.flags import kick_status
 from bridge.strategy.flags import Robot_Status
+from bridge.strategy.ricochet import get_ricochet_hit_point_center
 
 class Basic_Role:
 
@@ -334,8 +335,6 @@ class Role:
         def push(self, robot: rbt.Robot) -> None:
             """
             Добавляем робота в роль
-            Если добавляем нашего он добавиться в массив защитников
-            Если добавить вражеского то он будет в массиве роботов которых мы блокируем
             """
 
             is_ally: bool = robot.color == self.field.ally_color
@@ -345,7 +344,6 @@ class Role:
             if (robot.r_id == const.GK):
                 RuntimeError("In Role Block_Enemy_Pass push GK")
             self.ally_robots.append(robot)
-        
 
         def block_pass_point(self, 
             ally_robot: rbt.Robot, 
@@ -509,6 +507,110 @@ class Role:
                     self.actions[robot.r_id] = Actions.GoToPoint(pos, (ball_pos - robot.get_pos()).arg())
 
                 idx+=1
+
+
+    class RicochetAttacker(Basic_Role):
+
+
+        def __init__(self, 
+            field: fld.Field,
+            actions: list[Optional[Action]],
+        ) -> None:
+            super().__init__(field, actions)
+            self.attacker: Optional[rbt.Robot] = None
+            self.kick_status = kick_status
+            self.wall_offset: float = 50
+            self.voltage: float = 12
+
+        def push(self, robot: rbt.Robot) -> None:
+            is_ally: bool = robot.color == self.field.ally_color
+
+            if (not is_ally):
+                RuntimeError("In Role RicochetAttacker push enemy robot")
+            if (robot.r_id == const.GK):
+                RuntimeError("In Role RicochetAttacker push GK")
+            self.attacker = robot
+
+        def process(self) -> None:
+            if self.attacker is None:
+                return
+
+            ball_pos = self.field.ball.get_pos()
+            robot_pos = self.attacker.get_pos()
+
+            dist_to_ball = aux.dist(robot_pos, ball_pos)
+
+ 
+            if dist_to_ball > 200:
+
+                angle_to_ball = (ball_pos - robot_pos).arg()
+                # Цель - точка перед мячом 
+                target_pos = ball_pos - (ball_pos - robot_pos).unity() * 150
+
+                self.actions[self.attacker.r_id] = Actions.GoToPoint(
+                    target_pos,
+                    angle_to_ball
+                )
+                kick_status[self.attacker.r_id] = Robot_Status.Not_Kick
+                return
+
+            if dist_to_ball < 200 and not self.field.is_ball_in_ally_robot(): #  растояние до мяча
+                angle_to_ball = (ball_pos - robot_pos).arg()
+                self.actions[self.attacker.r_id] = Actions.BallGrab(angle_to_ball)
+                kick_status[self.attacker.r_id] = Robot_Status.Not_Kick
+                return
+
+            if self.field.is_ball_in_ally_robot():
+
+                hit_point = get_ricochet_hit_point_center(
+                    self.field,
+                    ball_pos,
+                    self.wall_offset
+                )
+
+                if hit_point is None:
+                    # Если рикошет невозможен - бьем прямо в ворота
+                    self.actions[self.attacker.r_id] = KickActions.Straight(
+                        self.field.enemy_goal.center,
+                        self.voltage,
+                        False,
+                        False
+                    )
+                    kick_status[self.attacker.r_id] = Robot_Status.Goal_Straight
+                    return
+
+
+                self.field.strategy_image.draw_line(
+                    ball_pos,
+                    hit_point,
+                    (0, 255, 255),
+                    3
+                )
+                self.field.strategy_image.draw_circle(
+                    hit_point,
+                    (255, 0, 255), 
+                    20
+                )
+                self.field.strategy_image.draw_line(
+                    hit_point,
+                    self.field.enemy_goal.center,
+                    (0, 255, 255), 
+                    3
+                )
+                self.field.strategy_image.draw_circle(
+                    self.field.enemy_goal.center,
+                    (0, 255, 0),  
+                    15
+                )
+
+
+                self.actions[self.attacker.r_id] = KickActions.Straight(
+                    hit_point,
+                    self.voltage,
+                    False,
+                    False
+                )
+                kick_status[self.attacker.r_id] = Robot_Status.Pass_Straight
 
 
 
