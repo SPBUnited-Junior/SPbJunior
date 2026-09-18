@@ -430,9 +430,11 @@ class Strategy:
         #рикошет
         ally_nearest_robot = fld.find_nearest_robot(self.ball, field.active_allies(False))
         
-        if ally_nearest_robot is not None:
-            Ricochet.push(ally_nearest_robot)
-            Ricochet.process()
+        # if ally_nearest_robot is not None:
+        #     Ricochet.push(ally_nearest_robot)
+        #     Ricochet.process()
+
+        actions[2] = Actions.CatchBall(aux.Point(0, 0), 0, True)
 
         draw_ricochet(field, self.ball)
         field.strategy_image.draw_circle(self.ball, (0, 0, 0), 7)

@@ -9,9 +9,17 @@ from typing import Optional
 import bridge.auxiliary.quickhull as qh
 from bridge import const
 from bridge.auxiliary import aux, fld, tau
+from enum import Enum
 from bridge.router.action import Action, ActionDomain, ActionValues, limit_action
 from bridge.router.path_generation import calc_passthrough_point, correct_target_pos
+from bridge.strategy.check_point import check_goal_point
 from bridge.strategy.strategy import GameStates
+from bridge.strategy.ricochet import get_ricochet_hit_point_center, get_ricochet_hit_point
+
+class KickType(Enum):
+    AUTO = 0
+    STRAIGHT = 1
+    RICOCHET = 2
 
 # Actions: ActionDomain -> ActionValues
 timer_to_stop : float = 0
@@ -387,23 +395,26 @@ class Actions:
             return [KickActions.Straight(*self.kick_args)]
     
     class CatchBall(Action):
-        def __init__(self,target_pos: aux.Point, target_angle: float, dribbler_speed: int = 15) -> None:
+        def __init__(self,target_pos: aux.Point, target_angle: float, is_catch_pass: bool = False, dribbler_speed: int = 15) -> None:
             self.target_pos = target_pos
             self.target_angle = target_angle
             self.dribbler_speed = dribbler_speed
-            self.is_catch_pass = False
+            self.is_catch_pass = is_catch_pass
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list[Action]:
             current_action.dribbler_speed = self.dribbler_speed
             ball_pos = domain.field.ball.get_pos()
             robot_pos = domain.robot.get_pos()
+            is_catch_ball: bool = domain.field.check_cath_ball(domain.robot.get_pos())
 
             pos = aux.closest_point_on_line(domain.field.ball_start_point, ball_pos, domain.robot.get_pos(), "R")
-            if (self.is_catch_pass and pos is not None and aux.dist(robot_pos, pos) < 20):
-                catch_pos = (ball_pos - domain.field.ball_start_point).unity() * 50 + pos
+            if  (is_catch_ball and self.is_catch_pass and pos is not None and aux.dist(robot_pos, pos) < 150 and not domain.field.is_ball_in(domain.robot)):
+                catch_pos = (ball_pos - domain.field.ball_start_point).unity() * 20 + pos
+                print(catch_pos)
                 dir_to_catch = (catch_pos - robot_pos)
                 current_action.vel = dir_to_catch * const.CATCH_SPEED
-                current_action.beep = 1
+                current_action.angle = (ball_pos - robot_pos).arg()
+                current_action.beep = 0
                 return []
             
             return [Actions.GoToPoint(self.target_pos, self.target_angle, False, True)]
@@ -573,6 +584,71 @@ class KickActions:
                 print((domain.robot.get_pos() - domain.field.ball.get_pos()).mag(), abs(aux.wind_down_angle((domain.field.ball.get_pos() - domain.robot.get_pos()).arg() - domain.robot.get_angle())))
             return actions
 
+
+    class Kick_goal(Kick):
+        def __init__(
+            self,
+            voltage: int = const.VOLTAGE_SHOOT,
+            kick_type: KickType = KickType.AUTO,
+            is_upper: bool = False,
+        ) -> None:
+            """
+            kick type:
+                direct - выборочный
+                stright - прямой
+                ricochet - рикошетом
+            """
+            self.kick_type = kick_type
+            super().__init__(aux.Point(0, 0), voltage, False, is_upper)
+
+        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
+            ball_pos = domain.field.ball.get_pos()
+
+            stright, stright_len = self.straight_candidate(domain, current_action)
+            ricochet, ricochet_len = self.ricochet_candidate(domain, current_action)
+
+            target = self.select_target(stright, stright_len, ricochet, ricochet_len)
+            if (target is None):
+                return [KickActions.Straight(domain.field.enemy_goal.center)]
+            return [KickActions.Straight(target)]
+        
+        def straight_candidate(self, domain: ActionDomain, current_action: ActionValues) -> tuple[aux.Point | None, float]:
+            return check_goal_point(domain.field, domain.field.ball.get_pos())
+
+        def ricochet_candidate(self, domain: ActionDomain, current_action: ActionValues) -> tuple[aux.Point | None, float]:
+            ball_pos = domain.field.ball.get_pos()
+            wall_point = get_ricochet_hit_point_center(domain.field, ball_pos)
+
+            if wall_point is None:
+                return None, 0.0
+            
+            point_in_goal, lenght = check_goal_point(domain.field, wall_point)
+            if point_in_goal is None:
+                return None, 0.0
+
+            kick_point = get_ricochet_hit_point(domain.field, ball_pos, point_in_goal)
+            if (kick_point is None):
+                return None, 0.0
+            
+            return kick_point, lenght
+
+        def select_target(self,        
+            stright: aux.Point | None, stright_len: float,
+            ricochet: aux.Point | None, ricochet_len: float
+        ) -> aux.Point | None:
+            if (self.kick_type == KickType.STRAIGHT):
+                return stright
+            if (self.kick_type == KickType.RICOCHET):
+                return ricochet
+
+            if stright is None:
+                return ricochet
+            if ricochet is None:
+                return stright
+            if (ricochet_len > stright_len):
+                return ricochet
+            return stright
+        
 
 class DumbActions:
     """User-unavailable actions, are used in Actions"""
