@@ -391,9 +391,21 @@ class Actions:
             self.target_pos = target_pos
             self.target_angle = target_angle
             self.dribbler_speed = dribbler_speed
+            self.is_catch_pass = False
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list[Action]:
             current_action.dribbler_speed = self.dribbler_speed
+            ball_pos = domain.field.ball.get_pos()
+            robot_pos = domain.robot.get_pos()
+
+            pos = aux.closest_point_on_line(domain.field.ball_start_point, ball_pos, domain.robot.get_pos(), "R")
+            if (self.is_catch_pass and pos is not None and aux.dist(robot_pos, pos) < 20):
+                catch_pos = (ball_pos - domain.field.ball_start_point).unity() * 50 + pos
+                dir_to_catch = (catch_pos - robot_pos)
+                current_action.vel = dir_to_catch * const.CATCH_SPEED
+                current_action.beep = 1
+                return []
+            
             return [Actions.GoToPoint(self.target_pos, self.target_angle, False, True)]
 
 
