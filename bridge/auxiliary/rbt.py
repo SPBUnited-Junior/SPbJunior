@@ -43,6 +43,11 @@ class Robot(entity.Entity):
         self.kicker_charge_enable_ = 0
         self.beep = 0
 
+        self.old_speed_a_for_turn: float = 0
+        self.old_actions_angle: float = 0
+        self.flag_ball_in_turn: bool = False
+        self.timer_to_stop: float = 0
+
         # v! SIM
         if const.IS_SIMULATOR_USED:
             self.k_wy = -0.001

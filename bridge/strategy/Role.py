@@ -10,7 +10,7 @@ from bridge.router.base_actions import Action, Actions, KickActions, get_pass_vo
 from bridge.strategy.check_point import check_goal_point
 from bridge.strategy.flags import kick_status
 from bridge.strategy.flags import Robot_Status
-from bridge.strategy.ricochet import get_ricochet_hit_point_center
+from bridge.strategy.ricochet import get_ricochet_hit_point_center, get_ricochet_hit_point
 
 class Basic_Role:
 
@@ -291,23 +291,7 @@ class Role:
                 self.defend_mode = True
 
             if self.defend_mode:
-                target_pos = self.defend_position(ball_pos)
 
-                if ball_speed > 200:
-                    time_to_ball = aux.dist(robot_pos, ball_pos) / max(ball_speed, 0.1)
-                    predicted_ball = ball_pos + ball_vel * min(time_to_ball, 0.5)
-                    target_pos = self.defend_position(predicted_ball)
-                    self.field.strategy_image.draw_circle(predicted_ball, (255, 165, 0), 15)
-            else:
-                target_pos = self.patrol_position()
-
-            angle_to_ball = (ball_pos - robot_pos).arg()
-
-            self.actions[self.gk_id] = Actions.GoToPoint(target_pos, angle_to_ball)
-            kick_status[self.gk_id] = Robot_Status.Not_Kick
-
-            self.field.strategy_image.draw_circle(target_pos, (0, 255, 255), 15)
-            self.zone()
 
         def zone(self) -> None:
             if not self.points_on_arc:
@@ -496,6 +480,8 @@ class Role:
 
                 if (not is_catch and self.field.check_cath_ball(robot.get_pos()) and check_status_not_kick(self.field)):
                     pos = aux.closest_point_on_line(self.field.ball_start_point, ball_pos, robot.get_pos(), "R")
+                    if (aux.dist(robot.get_pos(), pos) < 20):
+                        pos += (ball_pos - self.field.ball_start_point).unity * 20
                     kick_status[robot.r_id] = Robot_Status.Not_Kick
                     self.actions[robot.r_id] = Actions.CatchBall(pos, (ball_pos - robot.get_pos()).arg(), 12)
                     is_catch = True
@@ -562,9 +548,10 @@ class Role:
 
             if self.field.is_ball_in_ally_robot():
 
-                hit_point = get_ricochet_hit_point_center(
+                hit_point =  get_ricochet_hit_point(
                     self.field,
                     ball_pos,
+                    self.field.enemy_goal.center, #check_goal_point(self.field, ball_pos)[0],
                     self.wall_offset
                 )
 
