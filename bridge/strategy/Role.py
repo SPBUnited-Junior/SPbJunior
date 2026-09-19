@@ -9,7 +9,7 @@ from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore
 from bridge.strategy.check_point import check_goal_point
 from bridge.strategy.flags import kick_status
-from bridge.strategy.flags import Robot_Status
+from bridge.strategy.flags import Kick_Status
 from bridge.strategy.ricochet import get_ricochet_hit_point_center, get_ricochet_hit_point
 
 class Basic_Role:
@@ -65,17 +65,17 @@ class Role:
             #     optimal_point = rbt.get_pos()
             voltage = get_pass_voltage(aux.dist(ball_pos, optimal_point))
             point_kick_goal : Optional[aux.Point] = check_goal_point(self.field, ball_pos)[0]
-            if kick_status[self.attacker.r_id] == Robot_Status.Goal_Turn_Kick  and self.field.is_ball_in_ally_robot():
+            if kick_status[self.attacker.r_id] == Kick_Status.Goal_Turn_Kick  and self.field.is_ball_in_ally_robot():
                 """
                 Если робот захватил мяч и бьет в ворота с Turn
                 """
                 if point_kick_goal is None:
-                    kick_status[self.attacker.r_id] = Robot_Status.Pass_Turn_Kick
+                    kick_status[self.attacker.r_id] = Kick_Status.Pass_Turn_Kick
                     self.actions[self.attacker.r_id] = KickActions.Turn_Kick(self.field.enemy_goal.center, angle_nearest_robot, voltage)
                 else:
                     self.actions[self.attacker.r_id] = KickActions.Turn_Kick(point_kick_goal, angle_nearest_robot)
 
-            elif kick_status[self.attacker.r_id] == Robot_Status.Goal_Straight and self.field.is_ball_in_ally_robot():
+            elif kick_status[self.attacker.r_id] == Kick_Status.Goal_Straight and self.field.is_ball_in_ally_robot():
                 """
                 Если робот захватил мяч и бьет в ворота с Straight
                 """
@@ -87,19 +87,19 @@ class Role:
                     self.actions[self.attacker.r_id] = KickActions.Straight(point_kick_goal)
 
                 if(not aux.point_nearest_to_goal_hull(ball_pos) and point_kick_goal is None):
-                    kick_status[self.attacker.r_id] = Robot_Status.Pass_Turn_Kick
+                    kick_status[self.attacker.r_id] = Kick_Status.Pass_Turn_Kick
 
-            elif kick_status[self.attacker.r_id] == Robot_Status.Pass_Straight and self.field.is_ball_in_ally_robot():
+            elif kick_status[self.attacker.r_id] == Kick_Status.Pass_Straight and self.field.is_ball_in_ally_robot():
                 """
                 Если робот захватил мяч и бьет пасс с Straight
                 """
                 angle = (optimal_point - ball_pos).arg()
                 diff_angle = aux.wind_down_angle(angle - self.attacker.get_angle())
                 if (diff_angle > 0.2 and not aux.point_nearest_to_goal_hull(ball_pos)):
-                    kick_status[self.attacker.r_id] = Robot_Status.Pass_Turn_Kick
+                    kick_status[self.attacker.r_id] = Kick_Status.Pass_Turn_Kick
                 self.actions[self.attacker.r_id] = KickActions.Straight(optimal_point, voltage)
             
-            elif kick_status[self.attacker.r_id] == Robot_Status.Pass_Turn_Kick and self.field.is_ball_in_ally_robot():
+            elif kick_status[self.attacker.r_id] == Kick_Status.Pass_Turn_Kick and self.field.is_ball_in_ally_robot():
                 """
                 Если робот захватил мяч и бьет пасс с Turn
                 """
@@ -109,7 +109,7 @@ class Role:
                 """
                 Если робот не бьет  мяч
                 """
-                if ((kick_status[self.attacker.r_id] == Robot_Status.Pass_Straight or kick_status[self.attacker.r_id] == Robot_Status.Pass_Turn_Kick) 
+                if ((kick_status[self.attacker.r_id] == Kick_Status.Pass_Straight or kick_status[self.attacker.r_id] == Kick_Status.Pass_Turn_Kick) 
                     and self.field.check_cath_ball(optimal_point) and not self.field.is_ball_in_ally_robot()):
 
                     arg = (ball_pos - self.attacker.get_pos()).arg()
@@ -122,12 +122,12 @@ class Role:
 
                     if (aux.point_nearest_to_goal_hull(ball_pos) or
                         (aux.dist(self.attacker.get_pos(), ball_pos) > 450 or diff_angle < 0.4 
-                        and (aux.dist(self.attacker.get_pos(), ball_pos) > 150 or kick_status[self.attacker.r_id] == Robot_Status.Goal_Straight))
+                        and (aux.dist(self.attacker.get_pos(), ball_pos) > 150 or kick_status[self.attacker.r_id] == Kick_Status.Goal_Straight))
                     ):
-                        kick_status[self.attacker.r_id] = Robot_Status.Goal_Straight
+                        kick_status[self.attacker.r_id] = Kick_Status.Goal_Straight
                         self.actions[self.attacker.r_id] = KickActions.Straight(point_kick_goal)
                     else:
-                        kick_status[self.attacker.r_id] = Robot_Status.Goal_Turn_Kick
+                        kick_status[self.attacker.r_id] = Kick_Status.Goal_Turn_Kick
                         self.actions[self.attacker.r_id] = KickActions.Turn_Kick(self.field.enemy_goal.center, angle_nearest_robot)
                 else:
 
@@ -136,14 +136,13 @@ class Role:
 
                     if (aux.point_nearest_to_goal_hull(ball_pos) or
                         (aux.dist(self.attacker.get_pos(), ball_pos) > 450 or diff_angle < 0.4 
-                        and (aux.dist(self.attacker.get_pos(), ball_pos) > 150 or kick_status[self.attacker.r_id] == Robot_Status.Goal_Straight))
+                        and (aux.dist(self.attacker.get_pos(), ball_pos) > 150 or kick_status[self.attacker.r_id] == Kick_Status.Goal_Straight))
                     ):
 
-                        kick_status[self.attacker.r_id] = Robot_Status.Pass_Straight
+                        kick_status[self.attacker.r_id] = Kick_Status.Pass_Straight
                         self.actions[self.attacker.r_id] = KickActions.Straight(optimal_point, voltage)
                     else:
-
-                        kick_status[self.attacker.r_id] = Robot_Status.Pass_Turn_Kick
+                        kick_status[self.attacker.r_id] = Kick_Status.Pass_Turn_Kick
                         self.actions[self.attacker.r_id] = KickActions.Turn_Kick(optimal_point, angle_nearest_robot, voltage)
             self.field.strategy_image.draw_circle(optimal_point, (255, 0, 0), 100)
             #print(kick_status[self.attacker.r_id])
@@ -264,7 +263,7 @@ class Role:
 
             if ball_in_robot and ball_near_goal:
                 self.actions[self.gk_id] = KickActions.Straight(kick_target, voltage_kick, False, True)
-                kick_status[self.gk_id] = Robot_Status.Kick_in_goal_hull
+                kick_status[self.gk_id] = Kick_Status.Kick_in_goal_hull
                 self.field.strategy_image.draw_circle(robot_pos, (255, 0, 0), 30)
                 return
 
@@ -281,7 +280,7 @@ class Role:
                     kick_target = g_down_xy_goal
 
                 self.actions[self.gk_id] = KickActions.Straight(kick_target, voltage_kick, False, True)
-                kick_status[self.gk_id] = Robot_Status.Kick_in_goal_hull
+                kick_status[self.gk_id] = Kick_Status.Kick_in_goal_hull
                 self.field.strategy_image.draw_circle(robot_pos, (255, 165, 0), 30)
                 return
 
@@ -304,7 +303,7 @@ class Role:
             angle_to_ball = (ball_pos - robot_pos).arg()
 
             self.actions[self.gk_id] = Actions.GoToPoint(target_pos, angle_to_ball)
-            kick_status[self.gk_id] = Robot_Status.Not_Kick
+            kick_status[self.gk_id] = Kick_Status.Not_Kick
 
             self.field.strategy_image.draw_circle(target_pos, (0, 255, 255), 15)
             self.zone()
@@ -392,7 +391,7 @@ class Role:
                     used[ally_rbt.r_id] = True
                     angle = (ball_pos - block_point).arg()
                     self.actions[ally_rbt.r_id] = Actions.GoToPoint(block_point, angle)
-                    kick_status[ally_rbt.r_id] = Robot_Status.Not_Kick
+                    kick_status[ally_rbt.r_id] = Kick_Status.Not_Kick
                     min_dist = self.block_robot(idx + 1, min_dist, max_dist, used)
                     max_dist = max_dist_old
                     used[ally_rbt.r_id] = False
@@ -467,7 +466,7 @@ class Role:
                 pos = self._circle_to_two_tangents(80, ball_pos, self.field.ally_goal.down, self.field.ally_goal.up, rbt.get_pos())
                 if (aux.is_point_inside_poly(pos, self.field.ally_goal.hull)):
                     pos = (self.field.ally_goal.center - ball_pos).unity() * 120
-                kick_status[rbt.r_id] = Robot_Status.Not_Kick
+                kick_status[rbt.r_id] = Kick_Status.Not_Kick
                 self.actions[rbt.r_id] = Actions.GoToPoint(pos, (ball_pos - rbt.get_pos()).arg())
 
     class Pass(Basic_Role):
@@ -497,14 +496,14 @@ class Role:
 
                 if (not is_catch and self.field.check_cath_ball(robot.get_pos()) and check_status_not_kick(self.field)):
                     pos = aux.closest_point_on_line(self.field.ball_start_point, ball_pos, robot.get_pos(), "R")
-                    kick_status[robot.r_id] = Robot_Status.Not_Kick
+                    kick_status[robot.r_id] = Kick_Status.Not_Kick
                     self.actions[robot.r_id] = Actions.CatchBall(pos, (ball_pos - robot.get_pos()).arg(), True)
                     is_catch = True
                 
                 else:
                     if (idx >= len(self.field.pass_points)): return
                     pos = self.field.pass_points[idx]
-                    kick_status[robot.r_id] = Robot_Status.Not_Kick
+                    kick_status[robot.r_id] = Kick_Status.Not_Kick
                     self.actions[robot.r_id] = Actions.GoToPoint(pos, (ball_pos - robot.get_pos()).arg())
 
                 idx+=1
@@ -552,13 +551,13 @@ class Role:
                     target_pos,
                     angle_to_ball
                 )
-                kick_status[self.attacker.r_id] = Robot_Status.Not_Kick
+                kick_status[self.attacker.r_id] = Kick_Status.Not_Kick
                 return
 
             if dist_to_ball < 200 and not self.field.is_ball_in_ally_robot(): #  растояние до мяча
                 angle_to_ball = (ball_pos - robot_pos).arg()
                 self.actions[self.attacker.r_id] = Actions.BallGrab(angle_to_ball)
-                kick_status[self.attacker.r_id] = Robot_Status.Not_Kick
+                kick_status[self.attacker.r_id] = Kick_Status.Not_Kick
                 return
 
             if self.field.is_ball_in_ally_robot():
@@ -578,7 +577,7 @@ class Role:
                         False,
                         False
                     )
-                    kick_status[self.attacker.r_id] = Robot_Status.Goal_Straight
+                    kick_status[self.attacker.r_id] = Kick_Status.Goal_Straight
                     return
 
 
@@ -612,7 +611,7 @@ class Role:
                     False,
                     False
                 )
-                kick_status[self.attacker.r_id] = Robot_Status.Pass_Straight
+                kick_status[self.attacker.r_id] = Kick_Status.Pass_Straight
 
 
 
@@ -620,7 +619,7 @@ def check_status_not_kick(
         field: fld.Field,
     ) -> bool:
     for rbt in field.active_allies(True):
-        if (kick_status[rbt.r_id] != Robot_Status.Not_Kick):
+        if (kick_status[rbt.r_id] != Kick_Status.Not_Kick):
             return False
     return True
 

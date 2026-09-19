@@ -143,8 +143,8 @@ class Strategy:
         self.spin_start_time: float = time()
 
         self.Block: Optional[Role.Block_Enemy_Pass] = None
-        self.Attacker: Optional[Role.Attacker]  = None
-        self.Pass: Optional[Role.Pass]  = None
+        self.Attacker: Optional[Role.Attacker] = None
+        self.Pass: Optional[Role.Pass] = None
         self.Defer: Optional[Role.Defer] = None
         self.Goalkeeper: Optional[Role.Goalkeper] = None
 

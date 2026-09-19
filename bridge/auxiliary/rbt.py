@@ -7,6 +7,7 @@ from time import time
 
 from bridge import const
 from bridge.auxiliary import aux, entity, tau
+from bridge.strategy.flags import Kick_Status
 
 
 class Robot(entity.Entity):
@@ -47,6 +48,9 @@ class Robot(entity.Entity):
         self.old_actions_angle: float = 0
         self.flag_ball_in_turn: bool = False
         self.timer_to_stop: float = 0
+
+        self.kick_type = Kick_Status.Not_Kick
+        self.last_kick_type = Kick_Status.Not_Kick
 
         # v! SIM
         if const.IS_SIMULATOR_USED:
@@ -202,6 +206,9 @@ class Robot(entity.Entity):
         self.dribbler_speed_ = 0
         self.kicker_charge_enable_ = 0
         self.beep = 0
+
+        self.last_kick_type = self.kick_type
+        self.kick_type = Kick_Status.Not_Kick
 
     def is_kick_aligned(self, pos: aux.Point, angle: float) -> bool:
         """
