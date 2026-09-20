@@ -434,7 +434,7 @@ class Strategy:
         #     Ricochet.push(ally_nearest_robot)
         #     Ricochet.process()
 
-        actions[2] = Actions.CatchBall(aux.Point(0, 0), 0, True)
+        actions[2] = KickActions.Kick_Goal()
 
         draw_ricochet(field, self.ball)
         field.strategy_image.draw_circle(self.ball, (0, 0, 0), 7)

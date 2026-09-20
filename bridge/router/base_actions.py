@@ -455,7 +455,9 @@ class KickActions:
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             kick_angle = aux.angle_to_point(domain.field.ball.get_pos(), self.target_pos)
-            domain.robot.kick_type = Kick_Status.Straight
+
+            if (domain.field.is_ball_in(domain.robot)):
+                domain.robot.kick_type = Kick_Status.Straight
 
             actions = [
                 Actions.BallGrab(kick_angle),
@@ -482,7 +484,6 @@ class KickActions:
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             global old_speed_for_turn_stop
 
-            domain.robot.kick_type = Kick_Status.Turn_Kick
             kick_angle = aux.angle_to_point(domain.field.ball.get_pos(), self.target_pos)
             target_angle = (self.target_pos - domain.field.ball.get_pos()).arg()
             time_to_kick = 0.5 + 0.3 * self.is_pass
@@ -494,6 +495,7 @@ class KickActions:
                 DumbActions.ControlVoltageAction(self.voltage, self.pass_pos)
             ]
             if(domain.field.is_ball_in(domain.robot)) :
+                domain.robot.kick_type = Kick_Status.Turn_Kick
                 domain.robot.flag_ball_in_turn = True
 
             if (not domain.field.is_ball_in_turn(domain.robot)):
@@ -653,7 +655,7 @@ class KickActions:
     class Kick_Auto(Kick):
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             kick_auto_type = self.select_type(domain, current_action)
-
+            print(kick_auto_type)
             if kick_auto_type == Kick_Status.Straight:
                 return [KickActions.Straight(
                     self.target_pos, self.voltage, 
@@ -678,8 +680,8 @@ class KickActions:
                 return Kick_Status.Straight
 
             t_turn = diff_angle / const.ANGLE_VEL_MAX
-            t_ride = diff_dist / const.MAX_SPEED
-            if (t_turn > t_ride + 0.1):
+            t_ride = diff_dist / const.MAX_SPEED / 3
+            if (t_turn + 0.002 < t_ride):
                 return Kick_Status.Straight
             
             return Kick_Status.Turn_Kick
