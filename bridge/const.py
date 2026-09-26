@@ -180,7 +180,7 @@ KEEP_BALL_DIST = 300 + ROBOT_R
 
 # is_ball_in
 GRAB_ALIGN_DIST = 130
-BALL_GRABBED_ANGLE = 0.6
+BALL_GRABBED_ANGLE = 0.4
 BALL_GRABBED_DIST = 110
 # is_kick_aligned
 KICK_ALIGN_DIST_MULT = 1.5
@@ -191,8 +191,8 @@ KICK_ALIGN_OFFSET = 40
 # for grabbing ball
 GRAB_AREA = GRAB_ALIGN_DIST
 # GRAB_DIST = 45  # 30 is good
-GRAB_DIST = 65
-GRAB_MULT = 6  # speed = dist * mult
+GRAB_DIST = 75
+GRAB_MULT = 4  # speed = dist * mult
 GRAB_OFFSET_ANGLE = 0.25
 
 #check_catch_ball

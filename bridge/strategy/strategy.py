@@ -434,7 +434,8 @@ class Strategy:
         #     Ricochet.push(ally_nearest_robot)
         #     Ricochet.process()
 
-        actions[2] = KickActions.Kick_Goal()
+        actions[3] = KickActions.Turn_Kick2(self._test_case_turn_kick(field), 3)
+        print(self._test_case_turn_kick(field), "point")
 
         draw_ricochet(field, self.ball)
         field.strategy_image.draw_circle(self.ball, (0, 0, 0), 7)
@@ -449,6 +450,11 @@ class Strategy:
 
     #### Вспомогательные функции ####
 
+    def _test_case_turn_kick(self, field: fld.Field) -> aux.Point:
+        points = [field.enemy_goal.center, field.ally_goal.center, aux.Point(2000, 2000),
+        aux.Point(-2000, 2000), aux.Point(1000, -2000), aux.Point(-1000, 2000)]
+        n = len(points)
+        return points[int(int(time()) % n)]
 
     
     def _process_goalkeeper(
