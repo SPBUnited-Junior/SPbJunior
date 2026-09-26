@@ -63,7 +63,11 @@ class Role:
             # for rbt in self.field.active_allies(False):
             #     if (self.attacker == rbt): continue
             #     optimal_point = rbt.get_pos()
+            pass_robot = None
             voltage = get_pass_voltage(aux.dist(ball_pos, optimal_point))
+            for rbt in self.field.active_allies(False):
+                if (rbt != self.attacker): pass_robot = rbt
+
             point_kick_goal : Optional[aux.Point] = check_goal_point(self.field, ball_pos)[0]
             if kick_status[self.attacker.r_id] == Kick_Status.Goal_Turn_Kick  and self.field.is_ball_in_ally_robot():
                 """
@@ -71,9 +75,9 @@ class Role:
                 """
                 if point_kick_goal is None:
                     kick_status[self.attacker.r_id] = Kick_Status.Pass_Turn_Kick
-                    self.actions[self.attacker.r_id] = KickActions.Turn_Kick(self.field.enemy_goal.center, angle_nearest_robot, voltage)
+                    self.actions[self.attacker.r_id] = KickActions.Turn_Kick2(self.field.enemy_goal.center, angle_nearest_robot, voltage)
                 else:
-                    self.actions[self.attacker.r_id] = KickActions.Turn_Kick(point_kick_goal, angle_nearest_robot)
+                    self.actions[self.attacker.r_id] = KickActions.Turn_Kick2(point_kick_goal, angle_nearest_robot)
 
             elif kick_status[self.attacker.r_id] == Kick_Status.Goal_Straight and self.field.is_ball_in_ally_robot():
                 """
@@ -93,6 +97,7 @@ class Role:
                 """
                 Если робот захватил мяч и бьет пасс с Straight
                 """
+                self.field.pass_robot = pass_robot
                 angle = (optimal_point - ball_pos).arg()
                 diff_angle = aux.wind_down_angle(angle - self.attacker.get_angle())
                 if (diff_angle > 0.2 and not aux.point_nearest_to_goal_hull(ball_pos)):
@@ -103,7 +108,8 @@ class Role:
                 """
                 Если робот захватил мяч и бьет пасс с Turn
                 """
-                self.actions[self.attacker.r_id] = KickActions.Turn_Kick(optimal_point, angle_nearest_robot, voltage, True)
+                self.field.pass_robot = pass_robot
+                self.actions[self.attacker.r_id] = KickActions.Turn_Kick2(optimal_point, angle_nearest_robot, voltage, True)
 
             else:
                 """
@@ -128,7 +134,7 @@ class Role:
                         self.actions[self.attacker.r_id] = KickActions.Straight(point_kick_goal)
                     else:
                         kick_status[self.attacker.r_id] = Kick_Status.Goal_Turn_Kick
-                        self.actions[self.attacker.r_id] = KickActions.Turn_Kick(self.field.enemy_goal.center, angle_nearest_robot)
+                        self.actions[self.attacker.r_id] = KickActions.Turn_Kick2(self.field.enemy_goal.center, angle_nearest_robot)
                 else:
 
                     angle = (optimal_point - ball_pos).arg()
@@ -143,7 +149,7 @@ class Role:
                         self.actions[self.attacker.r_id] = KickActions.Straight(optimal_point, voltage)
                     else:
                         kick_status[self.attacker.r_id] = Kick_Status.Pass_Turn_Kick
-                        self.actions[self.attacker.r_id] = KickActions.Turn_Kick(optimal_point, angle_nearest_robot, voltage)
+                        self.actions[self.attacker.r_id] = KickActions.Turn_Kick2(optimal_point, angle_nearest_robot, voltage)
             self.field.strategy_image.draw_circle(optimal_point, (255, 0, 0), 100)
             #print(kick_status[self.attacker.r_id])
 
@@ -489,15 +495,16 @@ class Role:
         
         def process(self) -> None:
             if (len(self.field.pass_points) == 0): return
-            #print("Pass Role: ", *self.ally_robots)
+            print("Pass Role: ", *self.ally_robots)
             ball_pos = self.field.ball.get_pos()
             idx : int = 0
             is_catch : bool = False
             for robot in self.ally_robots:
 
-                if (not is_catch and self.field.check_cath_ball(robot.get_pos()) and check_status_not_kick(self.field)):
+                if (not is_catch and self.field.check_cath_ball(robot.get_pos()) and check_status_not_kick(self.field) and self.field.pass_robot == robot):
                     pos = aux.closest_point_on_line(self.field.ball_start_point, ball_pos, robot.get_pos(), "R")
                     kick_status[robot.r_id] = Kick_Status.Not_Kick
+                    print("is catch")
                     self.actions[robot.r_id] = Actions.CatchBall(pos, (ball_pos - robot.get_pos()).arg(), True)
                     is_catch = True
                 

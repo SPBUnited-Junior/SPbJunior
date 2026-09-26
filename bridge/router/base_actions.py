@@ -216,12 +216,12 @@ class Actions:
                 align_pos,
                 self.target_angle,
             )
-            transl_vel += domain.field.ball.get_vel() / 1.1
+            transl_vel += domain.field.ball.get_vel() / 1.3
 
             current_action.vel = transl_vel
             current_action.angle = self.target_angle
 
-            current_action.dribbler_speed = 13
+            current_action.dribbler_speed = 14
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             ball_pos = domain.field.ball.get_pos()
@@ -241,9 +241,9 @@ class Actions:
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             if domain.field.is_ball_in_turn(domain.robot) and domain.robot.flag_ball_in_turn:
-                ANGLE_BOOST = 0.7
-                R_ORBIT = 700
-                MAX_ANGLE_SPEED = 0.6
+                ANGLE_BOOST = 0.5
+                R_ORBIT = 800
+                MAX_ANGLE_SPEED = 0.5
 
                 error_arg = aux.wind_down_angle(self.target_angle - domain.robot.get_angle())
                 delta_t: float = domain.field.delta_time
@@ -265,7 +265,7 @@ class Actions:
                 print("ok", error_arg, segment_arg, diff_arg, current_action.angle)
 
                 current_action.beep = 1
-                current_action.dribbler_speed = 13
+                current_action.dribbler_speed = 8
                 current_action.angle = max(min(angle, MAX_ANGLE_SPEED), -MAX_ANGLE_SPEED)
                 print(current_action.angle)
                 speed = R_ORBIT * abs(current_action.angle)
@@ -416,13 +416,15 @@ class Actions:
             is_catch_ball: bool = domain.field.check_cath_ball(domain.robot.get_pos())
 
             pos = aux.closest_point_on_line(domain.field.ball_start_point, ball_pos, domain.robot.get_pos(), "R")
-            if  (is_catch_ball and self.is_catch_pass and pos is not None and aux.dist(robot_pos, pos) < 150 and not domain.field.is_ball_in(domain.robot)):
-                catch_pos = (ball_pos - domain.field.ball_start_point).unity() * 20 + pos
+            if  (is_catch_ball and pos is not None and aux.dist(robot_pos, pos) < 150 and not domain.field.is_ball_in(domain.robot)):
+                catch_pos = (ball_pos - domain.field.ball_start_point).unity() * 50 + pos
                 print(catch_pos)
                 dir_to_catch = (catch_pos - robot_pos)
                 current_action.vel = dir_to_catch * const.CATCH_SPEED
                 current_action.angle = (ball_pos - robot_pos).arg()
                 current_action.beep = 0
+                return []
+            if (domain.field.is_ball_in(domain.robot)):
                 return []
             
             return [Actions.GoToPoint(self.target_pos, self.target_angle, False, True)]
@@ -493,7 +495,7 @@ class KickActions:
 
             kick_angle = aux.angle_to_point(domain.field.ball.get_pos(), self.target_pos)
             target_angle = (self.target_pos - domain.field.ball.get_pos()).arg()
-            time_to_kick = 0.6 + 0.3 * self.is_pass
+            time_to_kick = 0.5 + 0.3 * self.is_pass
             diff =  abs(aux.wind_down_angle((target_angle - domain.robot.get_angle())))
 
             actions = [
@@ -608,7 +610,7 @@ class KickActions:
                 stright - прямой
                 ricochet - рикошетом
             """
-            self.kick_type = kick_type
+            self.kick_type = KickType.RICOCHET #kick_type
             super().__init__(aux.Point(0, 0), voltage, False, is_upper)
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
@@ -772,8 +774,8 @@ def get_pass_voltage(length: float) -> int:
     if const.IS_SIMULATOR_USED:
         # TODO fix control decoder
         return int(aux.minmax(0.0011 * length + 1.2, 5, const.VOLTAGE_SHOOT))
-    print(int(aux.minmax(0.005 * length + 1.2, 6, const.VOLTAGE_SHOOT)))
-    return int(aux.minmax(0.005 * length + 1.2, 6, const.VOLTAGE_SHOOT))
+    print(int(aux.minmax(0.004 * length + 1.1, 6, const.VOLTAGE_SHOOT)))
+    return int(aux.minmax(0.004 * length + 1.1, 6, const.VOLTAGE_SHOOT))
 
 
 def get_grab_speed(

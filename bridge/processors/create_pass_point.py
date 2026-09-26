@@ -109,6 +109,7 @@ class ExplorePasses(BaseProcessor):
     ) -> float:
         kick_goal_point = check_goal_point(field, field.ball.get_pos())[0]
         ball = field.ball.get_pos()
+        nearest_robot = fld.find_nearest_robot(ball, field.active_allies(False))
 
         if self.point_in_goal(field, point):
             return 0
@@ -116,9 +117,10 @@ class ExplorePasses(BaseProcessor):
             return 0
         if self.nearest_to_ball(field, point):
             return 0
-        
-        nearest_robot = fld.find_nearest_robot(ball, field.active_allies(False))
-        cath_dist = aux.dist(nearest_robot.get_pos(), ball) - const.BALL_R
+        if self.nearest_to_attacker(field, point, nearest_robot.get_pos()):
+            return 0
+         
+        cath_dist = aux.dist(nearest_robot.get_pos(), ball) - const.BALL_R - const.ROBOT_R - 110
 
         target_angle = (point - nearest_robot.get_pos()).arg()
         diff_angle = abs(aux.wind_down_angle(target_angle - nearest_robot.get_angle()))
@@ -218,3 +220,11 @@ class ExplorePasses(BaseProcessor):
         """
         ball = field.ball.get_pos()
         return aux.dist(ball, point) < const.MIN_PASS_DIST
+
+    def nearest_to_attacker(
+        self,
+        field: fld.Field,
+        point: aux.Point,
+        robot_pos: aux.Point
+    ) -> bool:
+        return aux.dist(point, robot_pos) < 500
