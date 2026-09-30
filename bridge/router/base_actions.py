@@ -216,7 +216,7 @@ class Actions:
                 align_pos,
                 self.target_angle,
             )
-            transl_vel += domain.field.ball.get_vel() / 1.3
+            transl_vel += domain.field.ball.get_vel() / 1.1
 
             current_action.vel = transl_vel
             current_action.angle = self.target_angle

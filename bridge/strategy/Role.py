@@ -100,7 +100,7 @@ class Role:
                 self.field.pass_robot = pass_robot
                 angle = (optimal_point - ball_pos).arg()
                 diff_angle = aux.wind_down_angle(angle - self.attacker.get_angle())
-                if (diff_angle > 0.2 and not aux.point_nearest_to_goal_hull(ball_pos)):
+                if (diff_angle > 0.4 and not aux.point_nearest_to_goal_hull(ball_pos)):
                     kick_status[self.attacker.r_id] = Kick_Status.Pass_Turn_Kick
                 self.actions[self.attacker.r_id] = KickActions.Straight(optimal_point, voltage)
             
@@ -142,7 +142,7 @@ class Role:
 
                     if (aux.point_nearest_to_goal_hull(ball_pos) or
                         (aux.dist(self.attacker.get_pos(), ball_pos) > 450 or diff_angle < 0.4 
-                        and (aux.dist(self.attacker.get_pos(), ball_pos) > 150 or kick_status[self.attacker.r_id] == Kick_Status.Goal_Straight))
+                        and (aux.dist(self.attacker.get_pos(), ball_pos) > 150 or kick_status[self.attacker.r_id] == Kick_Status.Pass_Straight))
                     ):
 
                         kick_status[self.attacker.r_id] = Kick_Status.Pass_Straight
@@ -464,6 +464,7 @@ class Role:
             center = aux.rotate(center, -angle)
             return aux.closest_point_on_line(aux.Point(point.x - 100, point.y), center + point, robot, "S") #center + point  # Используем point как исходную точку (аналог ball в оригинале)
 
+
         def process(self) -> None:
             if (len(self.ally_robots) == 0): return
             #print("Defer Role: ", *self.ally_robots)
@@ -622,6 +623,116 @@ class Role:
                 kick_status[self.attacker.r_id] = Kick_Status.Pass_Straight
 
 
+    class Well(Basic_Role):
+
+        def push(self, robot: rbt.Robot) -> None:
+            """
+            Добавляем робота в роль
+            Если добавляем нашего он добавиться в массив защитников
+            Если добавить вражеского то он будет в массиве роботов которых мы блокируем
+            """
+
+            is_ally: bool = robot.color == self.field.ally_color
+
+            if (not is_ally):
+                RuntimeError("In Role Defer push enemy robot")
+            if (robot.r_id == const.GK):
+                RuntimeError("In Role Defer push GK")
+            self.ally_robots.append(robot)
+
+        def _circle_to_two_tangents(
+            self, radius: float, point: aux.Point, point1: aux.Point, point2: aux.Point
+            ) -> aux.Point:
+            """
+            Вычисляет точку на окружности между двумя касательными.
+            Добавлена проверка на деление на ноль при вычислении синуса.
+            Написано Артёмом
+            """
+            if point1.y > point2.y:
+                lower_point = point2
+                top_point = point1
+            else:
+                lower_point = point1
+                top_point = point2
+            angle = aux.get_angle_between_points(top_point, point, lower_point) / 2
+            sin_val = math.sin(angle) if abs(math.sin(angle)) > 1e-6 else 1e-6
+            center = lower_point - point
+            center = center.unity() * (radius / abs(sin_val))
+            center = aux.rotate(center, -angle)
+            return center + point
+
+        def point_neares_block_hull(self) -> None:
+            ball_pos = self.field.ball.get_pos()
+            result_list = aux.line_circle_intersect(
+                ball_pos, self.field.ally_goal.center, self.field.ally_goal.center + self.field.ally_goal.eye_forw * 0, 900, "S"
+            )
+            result = ball_pos + (self.field.ally_goal.center - ball_pos).unity() * 170 
+            if len(result_list) == 1:
+                result = result_list[0]
+            elif len(result_list) == 2:
+                if abs(result_list[0].x) < abs(result_list[1].x):
+                    result = result_list[0]
+                else:
+                    result = result_list[1]
+
+            self.field.strategy_image.draw_circle(result, (255, 0, 0), 30)
+            #self.field.strategy_image.draw_circle(self.field.ally_goal.center + self.field.ally_goal.eye_forw * 0, (255, 0, 0), 850)
+            vec = (self.field.ally_goal.center - ball_pos).unity() * 100
+            positions = []
+            positions.append(result + aux.rotate(vec, math.pi / 2))
+            positions.append(result + aux.rotate(vec, -math.pi / 2))
+            self.field.strategy_image.draw_circle(result + aux.rotate(vec, math.pi / 2), (255, 0, 0), 30)
+            self.field.strategy_image.draw_circle(result + aux.rotate(vec, -math.pi / 2), (255, 0, 0), 30)
+            go_to_position(self.field, self.actions, self.ally_robots, positions)
+            print(*positions)
+            return
+
+        def point_block_hull(self) -> None:
+            ball = self.field.ball.get_pos()
+            p1 = aux.Point(ball.x - 10, ball.y)
+            angleTest = aux.get_angle_between_points(p1, ball, self.field.ally_goal.center)
+            angle1 = aux.get_angle_between_points(self.field.ally_goal.up, ball,self.field.ally_goal.down)
+            self.field.strategy_image.draw_line(ball, self.field.ally_goal.up, (0,0,0), 5)
+            #field.strategy_image.send_telemetry('angle_half', str(angle1/2))
+            self.field.strategy_image.draw_line(ball, self.field.ally_goal.down, (0,0,0), 5)
+            
+            vec1 = ball + (self.field.ally_goal.down-ball).unity() * 2000
+            vec2 = ball + (self.field.ally_goal.up-ball).unity() * 2000
+            distLine = aux.dist(vec1,vec2)
+            vec1 = ball + (self.field.ally_goal.down-ball).unity() * 2000*350/distLine
+            vec2 = ball + (self.field.ally_goal.up-ball).unity() * 2000*350/distLine
+        
+            self.field.strategy_image.draw_line(vec1, vec2, (255,255,255), 10)
+            point1r = aux.point_on_line(vec1, vec2, aux.dist(vec1,vec2)/2)
+            point2rUp = aux.closest_point_on_line(ball, self.field.ally_goal.up, aux.point_on_line(vec1, vec2, aux.dist(vec1,vec2)/2), "L")
+            point2rDown = aux.closest_point_on_line(ball, self.field.ally_goal.down, aux.point_on_line(vec1, vec2, aux.dist(vec1,vec2)/2), "L")
+
+
+            gip_dist = 75/(angle1/2)
+            r_id0 = self.ally_robots[0].r_id
+            r_id1 = self.ally_robots[1].r_id
+            positions = []
+            positions.append(aux.Point((point1r.x + point2rUp.x)/2,(point1r.y + point2rUp.y)/2))
+            positions.append(aux.Point((point1r.x + point2rDown.x)/2,(point1r.y + point2rDown.y)/2))
+            go_to_position(self.field, self.actions, self.ally_robots, positions)
+            print(*positions)
+
+        def process(self) -> None:
+            if (len(self.ally_robots) < 2):
+                return
+            ball_pos = self.field.ball.get_pos()
+            pos = self._circle_to_two_tangents(const.ROBOT_R * 2 + 50, ball_pos, self.field.ally_goal.center_down, self.field.ally_goal.center_up)
+            if (aux.is_point_inside_poly(pos, self.field.ally_goal.hull)):
+                print(*self.actions)
+                self.point_neares_block_hull()
+            else:
+                self.point_block_hull()
+                print(*self.actions)
+            
+            
+
+
+
 
 def check_status_not_kick(
         field: fld.Field,
@@ -635,7 +746,8 @@ def go_to_position(
     field: fld.Field, 
     actions: list[Optional[Action]], 
     robots: list[rbt.Robot], 
-    list_pos: list[aux.Point], 
+    list_pos: list[aux.Point],
+    copy_actions: list[Optional[Action]] = [None] * const.ROBOTS_MAX_COUNT,
     idx: int = 0, 
     min_dist: float = 1e5, 
     max_dist: float = 0,
@@ -649,6 +761,8 @@ def go_to_position(
     """
     if idx == len(list_pos):
         min_dist = max_dist
+        for rbt in robots:
+            actions[rbt.r_id] = copy_actions[rbt.r_id]
         return min_dist
 
     for rbt in robots:
@@ -656,8 +770,8 @@ def go_to_position(
         if not used[rbt.r_id] and dist < min_dist:
             max_dist = max(max_dist, dist)
             used[rbt.r_id] = True
-            actions[rbt.r_id] = Actions.GoToPoint(list_pos[idx], (list_pos[idx] - rbt.get_pos()).arg())
-            min_dist = go_to_position(field, actions, robots, list_pos, idx + 1, min_dist, max_dist)
+            copy_actions[rbt.r_id] = Actions.GoToPoint(list_pos[idx], (field.ball.get_pos() - rbt.get_pos()).arg())
+            min_dist = go_to_position(field, actions, robots, list_pos, copy_actions, idx + 1, min_dist, max_dist)
             used[rbt.r_id] = False
     return min_dist
         

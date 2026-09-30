@@ -125,7 +125,7 @@ class ExplorePasses(BaseProcessor):
         target_angle = (point - nearest_robot.get_pos()).arg()
         diff_angle = abs(aux.wind_down_angle(target_angle - nearest_robot.get_angle()))
 
-        catch_time = cath_dist / const.MAX_SPEED + 0.2 * diff_angle / const.ANGLE_VEL_MAX
+        catch_time = cath_dist / (const.MAX_SPEED * 0.75) + 0.001 * diff_angle / const.ANGLE_VEL_MAX
 
 
         """
