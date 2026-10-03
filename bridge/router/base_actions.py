@@ -15,9 +15,8 @@ from bridge.router.path_generation import calc_passthrough_point, correct_target
 from bridge.strategy.check_point import check_goal_point
 from bridge.strategy.strategy import GameStates
 from bridge.strategy.ricochet import get_ricochet_hit_point_center, get_ricochet_hit_point
-from bridge.strategy.flags import Kick_Status
-from bridge.strategy.flags import KickType
- 
+from bridge.strategy.flags import Kick_Status, KickType
+
 # Actions: ActionDomain -> ActionValues
 timer_to_stop : float = 0
 old_speed_for_turn : float = const.START_VEL_TURN
@@ -217,7 +216,7 @@ class Actions:
             current_action.vel = transl_vel
             current_action.angle = self.target_angle
 
-            current_action.dribbler_speed = 13
+            current_action.dribbler_speed = 12
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             ball_pos = domain.field.ball.get_pos()
@@ -237,9 +236,9 @@ class Actions:
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             if domain.field.is_ball_in_turn(domain.robot) and domain.robot.flag_ball_in_turn:
-                ANGLE_BOOST = 0.7
+                ANGLE_BOOST = 1
                 R_ORBIT = 700
-                MAX_ANGLE_SPEED = 0.6
+                MAX_ANGLE_SPEED = 0.7
 
                 error_arg = aux.wind_down_angle(self.target_angle - domain.robot.get_angle())
                 delta_t: float = domain.field.delta_time
@@ -261,7 +260,7 @@ class Actions:
                 print("ok", error_arg, segment_arg, diff_arg, current_action.angle)
 
                 current_action.beep = 1
-                current_action.dribbler_speed = 13
+                current_action.dribbler_speed = 10
                 current_action.angle = max(min(angle, MAX_ANGLE_SPEED), -MAX_ANGLE_SPEED)
                 print(current_action.angle)
                 speed = R_ORBIT * abs(current_action.angle)
@@ -362,7 +361,7 @@ class Actions:
                 current_action.angle = self.target_angle
                 current_action.beep = 0
                 current_action.vel = aux.rotate(aux.Point(160, 0), domain.robot.get_angle())
-                current_action.dribbler_speed = 15
+                current_action.dribbler_speed = 13
                 print(speed, "forward")
 
 
@@ -412,13 +411,15 @@ class Actions:
             is_catch_ball: bool = domain.field.check_cath_ball(domain.robot.get_pos())
 
             pos = aux.closest_point_on_line(domain.field.ball_start_point, ball_pos, domain.robot.get_pos(), "R")
-            if  (is_catch_ball and self.is_catch_pass and pos is not None and aux.dist(robot_pos, pos) < 150 and not domain.field.is_ball_in(domain.robot)):
-                catch_pos = (ball_pos - domain.field.ball_start_point).unity() * 20 + pos
+            if  (is_catch_ball and pos is not None and aux.dist(robot_pos, pos) < 20 and not domain.field.is_ball_in(domain.robot)):
+                catch_pos = (ball_pos - domain.field.ball_start_point).unity() * 40 + pos
                 print(catch_pos)
                 dir_to_catch = (catch_pos - robot_pos)
                 current_action.vel = dir_to_catch * const.CATCH_SPEED
                 current_action.angle = (ball_pos - robot_pos).arg()
                 current_action.beep = 0
+                return []
+            if (domain.field.is_ball_in(domain.robot)):
                 return []
             
             return [Actions.GoToPoint(self.target_pos, self.target_angle, False, True)]
@@ -489,7 +490,7 @@ class KickActions:
 
             kick_angle = aux.angle_to_point(domain.field.ball.get_pos(), self.target_pos)
             target_angle = (self.target_pos - domain.field.ball.get_pos()).arg()
-            time_to_kick = 0.6 + 0.3 * self.is_pass
+            time_to_kick = 0.5 + 0.3 * self.is_pass
             diff =  abs(aux.wind_down_angle((target_angle - domain.robot.get_angle())))
 
             actions = [
@@ -594,8 +595,9 @@ class KickActions:
     class Kick_Goal(Kick):
         def __init__(
             self,
-            voltage: int = const.VOLTAGE_SHOOT,
+            kick_type_turn: str = "auto",
             kick_type: KickType = KickType.AUTO,
+            voltage: int = const.VOLTAGE_SHOOT,
             is_upper: bool = False,
         ) -> None:
             """
@@ -605,6 +607,7 @@ class KickActions:
                 ricochet - рикошетом
             """
             self.kick_type = kick_type
+            self.kick_type_turn = kick_type_turn
             super().__init__(aux.Point(0, 0), voltage, False, is_upper)
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
@@ -612,8 +615,13 @@ class KickActions:
             ricochet, ricochet_len = self.ricochet_candidate(domain, current_action)
 
             target = self.select_target(stright, stright_len, ricochet, ricochet_len)
+            arg = (domain.field.ball.get_pos() - domain.robot.get_pos()).arg()
             if (target is None):
-                return [KickActions.Kick_Auto(domain.field.enemy_goal.center)]
+                target = domain.field.enemy_goal.center
+            if (self.kick_type_turn == "s"):
+                return [KickActions.Straight(target)]
+            elif(self.kick_type_turn == "t"):
+                return [KickActions.Turn_Kick2(target, arg)]
             return [KickActions.Kick_Auto(target)]
         
         def straight_candidate(self, domain: ActionDomain, current_action: ActionValues) -> tuple[aux.Point | None, float]:
@@ -649,7 +657,7 @@ class KickActions:
                 return ricochet
             if ricochet is None:
                 return stright
-            if (ricochet_len > stright_len):
+            if (ricochet_len > stright_len * 4):
                 return ricochet
             return stright
 
@@ -768,8 +776,8 @@ def get_pass_voltage(length: float) -> int:
     if const.IS_SIMULATOR_USED:
         # TODO fix control decoder
         return int(aux.minmax(0.0011 * length + 1.2, 5, const.VOLTAGE_SHOOT))
-    print(int(aux.minmax(0.005 * length + 1.2, 6, const.VOLTAGE_SHOOT)))
-    return int(aux.minmax(0.005 * length + 1.2, 6, const.VOLTAGE_SHOOT))
+    print(int(aux.minmax(0.005 * length + 1.1, 6, const.VOLTAGE_SHOOT)))
+    return int(aux.minmax(0.005 * length + 1.1, 6, const.VOLTAGE_SHOOT))
 
 
 def get_grab_speed(

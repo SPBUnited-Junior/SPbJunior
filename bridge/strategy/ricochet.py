@@ -172,44 +172,15 @@ def get_ricochet_hit_point(
         target_point = field.enemy_goal.center
     
 
-    right_wall = field.hull[0].x
-    left_wall = field.hull[2].x
     top_wall = field.hull[0].y
     bottom_wall = field.hull[2].y
-
-    dist_to_right = abs(ball_pos.x - right_wall)
-    dist_to_left = abs(ball_pos.x - left_wall)
     dist_to_top = abs(ball_pos.y - top_wall)
     dist_to_bottom = abs(ball_pos.y - bottom_wall)
     
-    min_dist = min(dist_to_right, dist_to_left, dist_to_top, dist_to_bottom)
-    
-    if min_dist == dist_to_right:
+    min_dist = min(dist_to_top, dist_to_bottom)
 
-        wall_x = right_wall - wall_offset
-  
-        reflected_point = aux.Point(
-            wall_x + (wall_x - target_point.x),
-            target_point.y
-        )
-        if abs(reflected_point.x - ball_pos.x) > 0.1:
-            t = (wall_x - ball_pos.x) / (reflected_point.x - ball_pos.x)
-            hit_y = ball_pos.y + t * (reflected_point.y - ball_pos.y)
-            return aux.Point(wall_x, hit_y)
             
-    elif min_dist == dist_to_left:
-
-        wall_x = left_wall + wall_offset
-        reflected_point = aux.Point(
-            wall_x - (target_point.x - wall_x),
-            target_point.y
-        )
-        if abs(reflected_point.x - ball_pos.x) > 0.1:
-            t = (wall_x - ball_pos.x) / (reflected_point.x - ball_pos.x)
-            hit_y = ball_pos.y + t * (reflected_point.y - ball_pos.y)
-            return aux.Point(wall_x, hit_y)
-            
-    elif min_dist == dist_to_top:
+    if min_dist == dist_to_top:
 
         wall_y = top_wall - wall_offset
         reflected_point = aux.Point(

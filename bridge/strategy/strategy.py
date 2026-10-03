@@ -13,10 +13,9 @@ from bridge.router.base_actions import Action, Actions, KickActions, get_pass_vo
 from bridge.strategy.check_point import check_goal_point
 from bridge.strategy.Role import Role
 from bridge.strategy.flags import kick_status
-from bridge.strategy.flags import KickType
+from bridge.strategy.flags import Kick_Status, KickType
 
 from bridge.strategy.ricochet import draw_ricochet
-from bridge.strategy.out_ball import process_out_ball
 
 
 
@@ -98,8 +97,8 @@ class Strategy:
         # Индексы роботов
 
         self.goalkeeper_idx = 0
-        self.idx1 = 7
-        self.idx2 = 3
+        self.idx1 = 6
+        self.idx2 = 7
         
         # Индексы роботов соперника
 
@@ -167,7 +166,9 @@ class Strategy:
         #p+9obot_position1.is_used # true на поле
 
         """Game State Management"""
-        voltage_kik = 6
+
+
+        self._serch_active_idx(field)
 
         robot_position_goalkeeper = field.allies[self.goalkeeper_idx].get_pos()
         robot_position1 = field.allies[self.idx1].get_pos()
@@ -186,6 +187,7 @@ class Strategy:
         actions: list[Optional[Action]] = []
         for _ in range(const.TEAM_ROBOTS_MAX_COUNT):
             actions.append(None)
+
 
         Block = Role.Block_Enemy_Pass(field, actions)
         Attacker = Role.Attacker(field, actions)
@@ -208,13 +210,11 @@ class Strategy:
         self.dist_line_goal = kick_inf_list[1]
 
         ### полложение мяча ###
-        #if self.ball == aux.Point(0, 0) or aux.dist(aux.Point(field.ball.get_pos().x,field.ball.get_pos().y), self.ball) < 1000.0:
-        self.ball = aux.Point(field.ball.get_pos().x,field.ball.get_pos().y)
+        self.ball = aux.Point(field.ball.get_pos().x, field.ball.get_pos().y)
         field.strategy_image.draw_circle(self.ball, (255, 255, 255), 30)
         
 
-
-        print(field.game_state, self.we_active)
+        print(field.game_state, self.we_active, const.COLOR)
 
         ally_nearest_robot = fld.find_nearest_robot(self.ball, field.active_allies(False))
         enemy_nearest_robot = fld.find_nearest_robot(self.ball, field.active_enemies(False))
@@ -314,7 +314,7 @@ class Strategy:
             self.flag = False
             pos_attacker1 =  self.ball + (field.ally_goal.center - self.ball).unity() * self.dist_to_ball
             angle_attacker1 = (self.ball - robot_position1).arg()
-            Pass.push(field.allies[self.idx2])
+            Block.push(field.allies[self.idx2])
             angle_attacker2 = (self.ball - robot_position2).arg()
 
             if aux.dist(pos_attacker1, self.ball) < 500:
@@ -329,6 +329,8 @@ class Strategy:
             pos_attacker2 = self.ball + (field.ally_goal.center - self.ball).unity() * self.dist_to_ball
             actions[self.idx1] = Actions.GoToPoint(pos_attacker1, angle_attacker1)
             actions[self.idx2] = Actions.GoToPoint(pos_attacker2, angle_attacker2)
+            # actions[self.idx1] = Actions.GoToPoint(self.ball, angle_attacker1)
+            # actions[self.idx2] = Actions.GoToPoint(self.ball, angle_attacker2)
         
 
         if abs(self.ball.x) > 2250 or abs(self.ball.y) > 1500:
@@ -342,6 +344,9 @@ class Strategy:
             Attacker.process()
             Pass.process()
             Defer.process()
+
+        if (field.game_state in [GameStates.STOP, GameStates.PREPARE_KICKOFF]):
+            self.check_dist_to_ball(field, actions, 450)
         
         return actions
 
@@ -353,104 +358,89 @@ class Strategy:
         Defer = Role.Defer(field, actions)
         Goalkeeper = Role.Goalkeper(field, actions)
         Ricochet = Role.RicochetAttacker(field, actions)
-
+        Well = Role.Well(field, actions)
         
-        
-        if process_out_ball(field, actions):
-            return
-
-        #ally_nearest_robot = fld.find_nearest_robot(self.ball, field.active_allies(False))
-        #enemy_nearest_robot = fld.find_nearest_robot(self.ball, field.active_enemies(False))
-        #ally_dist = aux.dist(ally_nearest_robot.get_pos(), self.ball)
-        #enemy_dist = aux.dist(enemy_nearest_robot.get_pos(), self.ball)
-        #dist_between_enemy_robots : float = 0
-        #for rbt in field.active_enemies(False):
-        #    if (rbt == enemy_nearest_robot): continue
-        #    dist_between_enemy_robots = aux.dist(enemy_nearest_robot.get_pos(), rbt.get_pos())
-#
-        #robot = ally_nearest_robot
-
-        # flag = False
-        # for rbt in field.active_allies(False):
-        #     if (field.check_cath_ball(rbt.get_pos())):
-        #         flag = True
-
-        # if (flag and field.is_ball_not_in_robot()):
-        #     for rbt in field.active_allies(False):
-        #         Pass.push(rbt)
-        # else:
-
-        #     if (robot.r_id == const.GK):
-        #         for rbt in field.active_allies(False):
-        #             Pass.push(rbt)
-        #     else:
-        #         for rbt in field.active_allies(False):
-
-        #             if (rbt != robot and (rbt.r_id == 1 or rbt.r_id == 3)):
-        #                 Pass.push(rbt)
-
-        #         Attacker.push(robot)
-
-        #flag = False
-        #for rbt in field.active_allies(False):
-        #    if (field.check_cath_ball(rbt.get_pos())):
-        #        flag = True
-#
-        #if (flag and field.is_ball_not_in_robot()):
-        #    for rbt in field.active_allies(False):
-        #        Pass.push(rbt)
-#
-        #else:
-        #    if (ally_dist - enemy_dist < 100):
-        #        Attacker.push(ally_nearest_robot)   
-        #        for rbt in field.active_allies(False):
-        #            if rbt == ally_nearest_robot: continue
-        #            Pass.push(rbt)
-        #    elif (aux.dist(field.ally_goal.center, field.ball.get_pos()) < 1200):
-        #        Defer.push(ally_nearest_robot)
-        #        for rbt in field.active_allies(False):
-        #            if rbt == ally_nearest_robot: continue
-        #            Block.push(rbt)
-#
-        #    elif(dist_between_enemy_robots < 300):
-        #        Attacker.push(ally_nearest_robot)
-        #        for rbt in field.active_allies(False):
-        #            if rbt == ally_nearest_robot: continue
-        #            Pass.push(rbt)
-        #        
-        #    else:
-        #        Attacker.push(ally_nearest_robot)
-        #        for rbt in field.active_allies(False):
-        #            if rbt == ally_nearest_robot: continue
-        #            Block.push(rbt)
-#
-        
-        # Block.process()
-        # Pass.process()
-        # Defer.process()
-        # Attacker.process()
-        #рикошет
         ally_nearest_robot = fld.find_nearest_robot(self.ball, field.active_allies(False))
+        enemy_nearest_robot = fld.find_nearest_robot(self.ball, field.active_enemies(False))
+        ally_dist = aux.dist(ally_nearest_robot.get_pos(), self.ball)
+        enemy_dist = aux.dist(enemy_nearest_robot.get_pos(), self.ball)
+        dist_between_enemy_robots : float = 0
+
+        for rbt in field.active_enemies(False):
+           if (rbt == enemy_nearest_robot): continue
+           dist_between_enemy_robots = aux.dist(enemy_nearest_robot.get_pos(), rbt.get_pos())
+
+        robot = ally_nearest_robot
+
+        #говнокод переделать 
+        if (aux.dist(field.ally_goal.center, field.ball.get_pos()) < 1700 or 
+            (aux.dist(field.ally_goal.center, field.ball.get_pos()) < 2200 and ally_dist > enemy_dist + 150)):
+            if (len(field.active_allies(False)) > 1):
+                for rbt in field.active_allies(False):
+                    Well.push(rbt)
+                    print("Well")
+            else:
+                 for rbt in field.active_allies(False):
+                    Defer.push(rbt)               
+                    print("Defer")
+        else:
+            flag = False
+            for rbt in field.active_allies(False):
+                if (field.check_cath_ball(rbt.get_pos()) and field.pass_robot == rbt):
+                    flag = True
         
-        # if ally_nearest_robot is not None:
-        #     Ricochet.push(ally_nearest_robot)
-        #     Ricochet.process()
+            if (flag and field.is_ball_not_in_robot()):
+                for rbt in field.active_allies(False):
+                    Pass.push(rbt)
+        
+            else:
+                if (robot.r_id == const.GK):
+                    for rbt in field.active_allies(False):
+                        Pass.push(rbt)
+                else:
+                    for rbt in field.active_allies(False):
 
-        #actions[3] = KickActions.Kick_Goal(10, KickType.RICOCHET)
-        print(self._test_case_turn_kick(field), "point")
+                        if (rbt != robot):
+                            Pass.push(rbt)
+                    print("attacler")
+                    Attacker.push(robot)
+        
+        Block.process()
+        Pass.process()
+        Defer.process()
+        Attacker.process()
+        Well.process()
+        #Goalkeeper.process()
 
-        draw_ricochet(field, self.ball)
-        field.strategy_image.draw_circle(self.ball, (0, 0, 0), 7)
-        field.strategy_image.draw_circle(self.ball, (0, 0, 0), 7)
-
-        #if (check_goal_point(field, self.ball)[0] is None):
-        #    actions[1] = KickActions.Turn_Kick(field.enemy_goal.center, 3)
-        #else:
-        #    actions[1] = KickActions.Turn_Kick(check_goal_point(field, self.ball)[0], 3)
-        # print(field.ball.get_vel().mag())
-
+        #actions[7] = KickActions.Turn_Kick2(field.enemy_goal.center, 0) 
 
     #### Вспомогательные функции ####
+
+    def check_dist_to_ball(self, field: fld.Field, actions: list[Optional[Action]], lim_dist: int = 500) -> None:
+        for rbt in field.active_allies(False):
+            predict_pos = rbt.get_pos() + rbt.get_vel()
+            to_ball_arg = (self.ball - rbt.get_pos()).arg()
+            vec1 = (rbt.get_pos() - self.ball).unity()
+            vec2 = (predict_pos - self.ball).unity()
+            # if (aux.dist(predict_pos, self.ball) < lim_dist):
+            #     actions[rbt.r_id] = Actions.GoToPoint(predict_pos + vec1 * (lim_dist + 40), to_ball_arg)
+            if (aux.dist(rbt.get_pos(), self.ball) < lim_dist):
+                actions[rbt.r_id] = Actions.GoToPoint(rbt.get_pos() + vec2 * (lim_dist + 40), to_ball_arg)
+
+
+    def _serch_active_idx(self, field: fld.Field) -> None:
+        #Это говнокод, так как снизу гвонокод
+        if (len(field.active_allies(False)) > 0):
+            self.idx1 = field.active_allies(False)[0].r_id
+        if (len(field.active_allies(False)) > 1):
+            self.idx2 = field.active_allies(False)[1].r_id
+        self.goalkeeper_idx = const.GK
+
+        if (len(field.active_enemies(False)) > 0):
+            self.idx_enemy1 = field.active_enemies(False)[0].r_id
+        if (len(field.active_enemies(False)) > 1):
+            self.idx_enemy2 = field.active_enemies(False)[1].r_id
+        self.goalkeeper_idx_enemy = const.ENEMY_GK
 
     def _test_case_turn_kick(self, field: fld.Field) -> aux.Point:
         points = [field.enemy_goal.center, field.ally_goal.center, aux.Point(2000, 2000),

@@ -100,6 +100,7 @@ class Field:
         self.path_image = drawing.Image(drawing.ImageTopic.PATH_GENERATION)
         self.delta_time: float = 0
         self.timer: float = 0
+        self.pass_robot: Optional[rbt.Robot] = None
 
         self.ally_color = color
         if self.ally_color == const.COLOR:
@@ -383,7 +384,7 @@ class Field:
             (pos_cath is None
             or aux.dist(pos_cath, pas_point) > const.DIST_CATCH_BALL
             or dist_to_target > const.DIST_TO_PASS
-            or self.ball.get_vel().mag() < dist_to_target * 0.3 + 50)
+            or self.ball.get_vel().mag() < dist_to_target * 0.4 + 100)
         ):
             return False
         return True
