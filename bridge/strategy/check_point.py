@@ -9,7 +9,8 @@ from bridge.auxiliary import aux, fld, rbt  # type: ignore
 def check_goal_point(
     field: fld.Field,
     ball: aux.Point,
-    flag_goalkeeper: bool = True
+    flag_goalkeeper: bool = True,
+    castom_cof: float = 1
 ) -> tuple[aux.Point | None, float]:
     """
     Строим косательные к вражеским роботам от ball
@@ -24,7 +25,7 @@ def check_goal_point(
     for rbt in field.active_enemies(True):
         if (not flag_goalkeeper and rbt.r_id == const.ENEMY_GK): continue
         enemy = rbt.get_pos()
-        tangent_points = aux.get_tangent_points(enemy, ball, const.ROBOT_R + aux.dist(ball, enemy) * 0.045)
+        tangent_points = aux.get_tangent_points(enemy, ball, const.ROBOT_R + aux.dist(ball, enemy) * 0.008 * castom_cof)
         if len(tangent_points) >= 2:
             cords_peresch = []
             for count in range(2):

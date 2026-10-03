@@ -192,7 +192,7 @@ KICK_ALIGN_OFFSET = 40
 GRAB_AREA = GRAB_ALIGN_DIST
 # GRAB_DIST = 45  # 30 is good
 GRAB_DIST = 55
-GRAB_MULT = 4  # speed = dist * mult
+GRAB_MULT = 5  # speed = dist * mult
 GRAB_OFFSET_ANGLE = 0.25
 
 #check_catch_ball
@@ -201,7 +201,7 @@ DIST_TO_PASS = 2200
 
 #catch ball
 
-CATCH_SPEED = 0.45
+CATCH_SPEED = 0.5
 
 if IS_SIMULATOR_USED:
     GRAB_ALIGN_DIST = 150
@@ -211,7 +211,7 @@ if IS_SIMULATOR_USED:
     GRAB_OFFSET_ANGLE = 0.45
 
 #check point to kick
-MIN_PASS_DIST = 700
+MIN_PASS_DIST = 1200
 MIN_DIST_FROM_KICK = 400
 
 #count passes point
@@ -234,7 +234,7 @@ KICK_ALIGN_ANGLE = 0.08
 # VOLTAGES
 VOLTAGE_SHOOT = 8
 VOLTAGE_UP = 13
-VOLTAGE_ZERO = 8
+VOLTAGE_ZERO = 7
 
 #Use dribler
 DRIBLER_IS_USE = True

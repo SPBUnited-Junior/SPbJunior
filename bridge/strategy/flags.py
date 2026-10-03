@@ -16,5 +16,10 @@ class Kick_Status(Enum):
     Turn_Kick = 5
     Straight = 6
     Kick_in_goal_hull = 7
+
+class KickType(Enum):
+    AUTO = 0
+    STRAIGHT = 1
+    RICOCHET = 2
     
 kick_status: list[Enum] = [Kick_Status.Not_Kick] * 15
