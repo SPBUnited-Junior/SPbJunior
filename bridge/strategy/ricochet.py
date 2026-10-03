@@ -9,7 +9,7 @@ from bridge.auxiliary import aux, fld
 
 
 def draw_ricochet(field: fld.Field, ball_pos: aux.Point) -> None:
-
+    
 
     right_wall = field.hull[0].x   # Правая стенка 
     left_wall = field.hull[2].x    # Левая стенка -
@@ -242,3 +242,24 @@ def get_ricochet_hit_point_center(
 ) -> Optional[aux.Point]:
    
     return get_ricochet_hit_point(field, ball_pos, field.enemy_goal.center, wall_offset)
+
+def is_shot_to_own_goal(
+    field: fld.Field,
+    ball_pos: aux.Point,
+    target_point: aux.Point,
+) -> bool:
+
+    if aux.is_point_inside_poly(target_point, field.ally_goal.hull):
+        return True
+
+    inter = aux.get_line_intersection(
+        field.ally_goal.up,
+        field.ally_goal.down,
+        ball_pos,
+        target_point,
+        "SR",
+    )
+    if inter is not None:
+        return True
+
+    return False

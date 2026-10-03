@@ -16,12 +16,8 @@ from bridge.strategy.check_point import check_goal_point
 from bridge.strategy.strategy import GameStates
 from bridge.strategy.ricochet import get_ricochet_hit_point_center, get_ricochet_hit_point
 from bridge.strategy.flags import Kick_Status
-
-class KickType(Enum):
-    AUTO = 0
-    STRAIGHT = 1
-    RICOCHET = 2
-
+from bridge.strategy.flags import KickType
+ 
 # Actions: ActionDomain -> ActionValues
 timer_to_stop : float = 0
 old_speed_for_turn : float = const.START_VEL_TURN

@@ -13,8 +13,10 @@ from bridge.router.base_actions import Action, Actions, KickActions, get_pass_vo
 from bridge.strategy.check_point import check_goal_point
 from bridge.strategy.Role import Role
 from bridge.strategy.flags import kick_status
+from bridge.strategy.flags import KickType
 
 from bridge.strategy.ricochet import draw_ricochet
+from bridge.strategy.out_ball import process_out_ball
 
 
 
@@ -96,8 +98,8 @@ class Strategy:
         # Индексы роботов
 
         self.goalkeeper_idx = 0
-        self.idx1 = 1
-        self.idx2 = 2
+        self.idx1 = 7
+        self.idx2 = 3
         
         # Индексы роботов соперника
 
@@ -352,10 +354,10 @@ class Strategy:
         Goalkeeper = Role.Goalkeper(field, actions)
         Ricochet = Role.RicochetAttacker(field, actions)
 
-        print(111)
         
         
-        
+        if process_out_ball(field, actions):
+            return
 
         #ally_nearest_robot = fld.find_nearest_robot(self.ball, field.active_allies(False))
         #enemy_nearest_robot = fld.find_nearest_robot(self.ball, field.active_enemies(False))
@@ -434,7 +436,7 @@ class Strategy:
         #     Ricochet.push(ally_nearest_robot)
         #     Ricochet.process()
 
-        actions[3] = KickActions.Turn_Kick2(self._test_case_turn_kick(field), 3)
+        #actions[3] = KickActions.Kick_Goal(10, KickType.RICOCHET)
         print(self._test_case_turn_kick(field), "point")
 
         draw_ricochet(field, self.ball)
