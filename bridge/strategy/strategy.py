@@ -276,7 +276,7 @@ class Strategy:
             kik_angle2 = self.ball- robot_position2
 
             pos_kikoff1 = aux.Point(500 * field.polarity, 0)   
-            pos_kikoff2 = aux.Point(1000 * field.polarity, 0)
+            pos_kikoff2 = aux.Point(400 * field.polarity, 400)
 
             actions[self.idx1] = Actions.GoToPoint(pos_kikoff1, kik_angle1.arg())
             actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())
@@ -285,7 +285,7 @@ class Strategy:
             kik_angle1 = self.ball - robot_position1
             kik_angle2 = self.ball - robot_position2
             pos_kikoff1 = aux.Point(500 * field.polarity, 0)
-            pos_kikoff2 = aux.Point(1000 * field.polarity, 0)
+            pos_kikoff2 = aux.Point(400 * field.polarity, 400)
             actions[self.idx1] = Actions.GoToPoint(pos_kikoff1, kik_angle1.arg())
             actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())
 
@@ -313,8 +313,8 @@ class Strategy:
         elif field.game_state == GameStates.STOP:
             self.flag = False
             pos_attacker1 =  self.ball + (field.ally_goal.center - self.ball).unity() * self.dist_to_ball
+            if (len(field.pass_points) > 0): pos_attacker2 =  field.pass_points[0]
             angle_attacker1 = (self.ball - robot_position1).arg()
-            Block.push(field.allies[self.idx2])
             angle_attacker2 = (self.ball - robot_position2).arg()
 
             if aux.dist(pos_attacker1, self.ball) < 500:
@@ -375,7 +375,7 @@ class Strategy:
 
         #говнокод переделать 
         if (not (aux.is_point_inside_poly(self.ball, field.ally_goal.hull) and field.ball.get_vel().mag() < 200) and
-           aux.dist(field.ally_goal.center, field.ball.get_pos()) < 1700 and ally_dist + 500 > enemy_dist) or (aux.dist(field.ally_goal.center, field.ball.get_pos()) < 2200 and ally_dist > enemy_dist + 150):
+            aux.dist(field.ally_goal.center, field.ball.get_pos()) < 1700 and ally_dist + 500 > enemy_dist) or (aux.dist(field.ally_goal.center, field.ball.get_pos()) < 2200 and ally_dist > enemy_dist + 150):
 
             if (len(field.active_allies(False)) > 1):
                 for rbt in field.active_allies(False):
