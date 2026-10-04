@@ -192,7 +192,7 @@ KICK_ALIGN_OFFSET = 40
 GRAB_AREA = GRAB_ALIGN_DIST
 # GRAB_DIST = 45  # 30 is good
 GRAB_DIST = 55
-GRAB_MULT = 5  # speed = dist * mult
+GRAB_MULT = 6  # speed = dist * mult
 GRAB_OFFSET_ANGLE = 0.25
 
 #check_catch_ball
@@ -219,7 +219,7 @@ COUNT_PASSES_POINT = 4
 DIST_PASSES_POINT = 800
 
 #point_nearest_to_robot
-MIN_DIST_TO_GOAL = 400
+MIN_DIST_TO_GOAL = 200
 
 #turn Kick
 START_VEL_TURN = 0
