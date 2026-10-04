@@ -98,6 +98,7 @@ class Role:
 
             point_kick_goal : Optional[aux.Point] = check_goal_point(self.field, ball_pos)[0]
             can_ricochet = self.can_ricochet_point()
+            print(Kick_Status.Goal_Turn_Kick)
             if kick_status[self.attacker.r_id] == Kick_Status.Goal_Turn_Kick  and self.field.is_ball_in_ally_robot():
                 """
                 Если робот захватил мяч и бьет в ворота с Turn
@@ -197,10 +198,10 @@ class Role:
             self.end_angle: float = 0
             self.arc_points()
 
-        def arc_points(self, num_points: int = 30) -> None:
+        def arc_points(self, num_points: int = 60) -> None:
             g = self.field.ally_goal
 
-            self.center = (g.up + g.down) / 2
+            self.center = (g.up + g.down) / 2.05
 
             self.radius = aux.dist(self.center, g.frw)
 
@@ -359,6 +360,7 @@ class Role:
             goal_center = self.field.ally_goal.center
             for point in self.points_on_arc[::5]:
                 self.field.strategy_image.draw_line(goal_center, point, (100, 100, 100), 1)
+        
     class Block_Enemy_Pass(Basic_Role):
 
         def push(self, robot: rbt.Robot) -> None:
