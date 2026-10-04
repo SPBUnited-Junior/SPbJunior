@@ -181,6 +181,12 @@ class Role:
 
     class Goalkeper(Basic_Role):
 
+        DEFEND_SPEED_MULT: float = 2.5
+        PATROL_SPEED_MULT: float = 2
+        INTERCEPT_SPEED_MULT: float = 2.1
+        EMERGENCY_SPEED_MULT: float = 2
+        ACCEL_LIMIT: float = 0.35
+
         def __init__(
             self,
             field: fld.Field,
@@ -198,30 +204,32 @@ class Role:
             self.start_angle: float = 0
             self.end_angle: float = 0
             self.arc_points()
+            self._last_vel: aux.Point = aux.Point(0, 0)
 
-        def arc_points(self, num_points: int = 45) -> None:
+        def arc_points(self, num_points: int = 50) -> None:
             g = self.field.ally_goal
-
-            self.center = (g.up + g.down) / 2.05
-
-            self.radius = aux.dist(self.center, g.frw)
-
-            field_direction = g.eye_forw  
-
+        
+            self.center = (g.up + g.down) / 2
+        
+            self.radius = aux.dist(g.up, g.down) / 2 * 1.06
+        
+            field_direction = g.eye_forw
+        
             center_angle = field_direction.arg()
-
+        
             self.start_angle = center_angle - math.pi / 2
             self.end_angle = center_angle + math.pi / 2
-
+        
             self.points_on_arc = []
             for i in range(num_points + 1):
                 t = i / num_points
                 angle = self.start_angle + (self.end_angle - self.start_angle) * t
-
+        
                 x = self.center.x + self.radius * math.cos(angle)
                 y = self.center.y + self.radius * math.sin(angle)
-
+        
                 self.points_on_arc.append(aux.Point(x, y))
+
         def defend_position(self, ball_pos: aux.Point) -> aux.Point:
             goal_center = self.field.ally_goal.center
 
@@ -262,7 +270,7 @@ class Role:
             target_pos = self.points_on_arc[self.current_point_idx]
 
             robot_pos = self.goalkeeper.get_pos()
-            if aux.dist(robot_pos, target_pos) < 15:
+            if aux.dist(robot_pos, target_pos) < 25:
                 self.current_point_idx += self.direction
 
                 if self.current_point_idx >= len(self.points_on_arc):
@@ -273,7 +281,31 @@ class Role:
                     self.direction = 1
 
             return target_pos
-    
+
+        def _fast_go_to(self, target_pos: aux.Point, angle: float, speed_mult: float) -> None:
+            robot_pos = self.goalkeeper.get_pos()
+            delta = target_pos - robot_pos
+            dist = delta.mag()
+
+            if dist < 1.0:
+                self.actions[self.gk_id] = Actions.GoToPoint(target_pos, angle)
+                return
+
+            base_speed = min(dist * 3.5, const.MAX_SPEED * speed_mult)
+            base_speed = max(base_speed, const.MAX_SPEED * 0.25 * speed_mult)
+
+            target_vel = delta.unity() * base_speed
+
+            diff_vel = target_vel - self._last_vel
+            if diff_vel.mag() > const.MAX_SPEED * self.ACCEL_LIMIT:
+                diff_vel = diff_vel.unity() * (const.MAX_SPEED * self.ACCEL_LIMIT)
+            new_vel = self._last_vel + diff_vel
+            self._last_vel = new_vel
+
+            action = Actions.GoToPoint(target_pos, angle)
+            action._override_vel = new_vel  # type: ignore
+            self.actions[self.gk_id] = action
+
         def process(self) -> None:
             if not self.points_on_arc:
                 self.arc_points()
@@ -285,7 +317,7 @@ class Role:
             robot_pos = self.goalkeeper.get_pos()
 
             dist_to_goal = aux.dist(ball_pos, self.field.ally_goal.center)
-            voltage_kick = 12
+            voltage_kick = 14
             kick_target = self.field.enemy_goal.center
 
             ball_in_robot = self.field.is_ball_in_ally_robot()
@@ -296,6 +328,7 @@ class Role:
                 self.actions[self.gk_id] = KickActions.Straight(kick_target, voltage_kick, False, True)
                 kick_status[self.gk_id] = Kick_Status.Kick_in_goal_hull
                 self.field.strategy_image.draw_circle(robot_pos, (255, 0, 0), 30)
+                self._last_vel = aux.Point(0, 0)
                 return
 
             if ball_stopped_near_goal:
@@ -313,18 +346,28 @@ class Role:
                 self.actions[self.gk_id] = KickActions.Straight(kick_target, voltage_kick, False, True)
                 kick_status[self.gk_id] = Kick_Status.Kick_in_goal_hull
                 self.field.strategy_image.draw_circle(robot_pos, (255, 165, 0), 30)
+                self._last_vel = aux.Point(0, 0)
                 return
 
-            ball_is_stopped = ball_speed < 1.0 
+            ball_is_stopped = ball_speed < 1.0
 
             if ball_is_stopped:
-
                 angle_to_ball = (ball_pos - robot_pos).arg()
                 self.actions[self.gk_id] = Actions.GoToPoint(robot_pos, angle_to_ball)
                 kick_status[self.gk_id] = Kick_Status.Not_Kick
                 self.field.strategy_image.draw_circle(robot_pos, (0, 255, 0), 20)
+                self._last_vel = aux.Point(0, 0)
                 self.zone()
                 return
+
+            ball_towards_goal = False
+            if ball_speed > 50:
+                to_goal = (self.field.ally_goal.center - ball_pos)
+                if to_goal.mag() > 0.1:
+                    cos_angle = (ball_vel.unity().x * to_goal.unity().x +
+                                 ball_vel.unity().y * to_goal.unity().y)
+                    if cos_angle > 0.5:
+                        ball_towards_goal = True
 
             if dist_to_goal > 2000 and ball_speed < 100:
                 self.defend_mode = False
@@ -344,12 +387,20 @@ class Role:
 
             angle_to_ball = (ball_pos - robot_pos).arg()
 
-            self.actions[self.gk_id] = Actions.GoToPoint(target_pos, angle_to_ball)
+            if ball_towards_goal and ball_speed > 150:
+                speed_mult = self.EMERGENCY_SPEED_MULT
+                self.field.strategy_image.draw_circle(robot_pos, (255, 0, 0), 40)
+            elif self.defend_mode:
+                speed_mult = self.DEFEND_SPEED_MULT
+            else:
+                speed_mult = self.PATROL_SPEED_MULT
+
+            self._fast_go_to(target_pos, angle_to_ball, speed_mult)
+
             kick_status[self.gk_id] = Kick_Status.Not_Kick
 
             self.field.strategy_image.draw_circle(target_pos, (0, 255, 255), 15)
             self.zone()
-
 
         def zone(self) -> None:
             if not self.points_on_arc:
@@ -763,7 +814,7 @@ def go_to_position(
     idx: int = 0, 
     min_dist: float = 1e5, 
     max_dist: float = 0,
-    used: list[bool] = [False] * 15
+    used: list[bool] = [False] * 20
 ) -> float:
     """
     Распределяет позиции по роботам,
@@ -774,12 +825,14 @@ def go_to_position(
     if idx == len(list_pos):
         min_dist = max_dist
         for rbt in robots:
+            if (rbt.r_id >= 15): continue
             actions[rbt.r_id] = copy_actions[rbt.r_id]
         return min_dist
 
     for rbt in robots:
         dist: float = aux.dist(rbt.get_pos(), list_pos[idx])
         if not used[rbt.r_id] and dist < min_dist:
+            if (rbt.r_id >= 15): continue
             max_dist = max(max_dist, dist)
             used[rbt.r_id] = True
             copy_actions[rbt.r_id] = Actions.GoToPoint(list_pos[idx], (field.ball.get_pos() - rbt.get_pos()).arg())

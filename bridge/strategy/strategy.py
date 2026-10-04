@@ -97,8 +97,8 @@ class Strategy:
         # Индексы роботов
 
         self.goalkeeper_idx = 0
-        self.idx1 = 6
-        self.idx2 = 7
+        self.idx1 = 1
+        self.idx2 = 2
         
         # Индексы роботов соперника
 
@@ -359,6 +359,7 @@ class Strategy:
         Goalkeeper = Role.Goalkeper(field, actions)
         Ricochet = Role.RicochetAttacker(field, actions)
         Well = Role.Well(field, actions)
+        print(11119)
         
         ally_nearest_robot = fld.find_nearest_robot(self.ball, field.active_allies(False))
         enemy_nearest_robot = fld.find_nearest_robot(self.ball, field.active_enemies(False))
@@ -413,8 +414,9 @@ class Strategy:
         Well.process()
         #Goalkeeper.process()
 
-        #actions[7] = KickActions.Turn_Kick2(field.enemy_goal.center, 0) 
 
+        #actions[0] = KickActions.Turn_Kick2(field.enemy_goal.center, 0) 
+        #print(154543)
     #### Вспомогательные функции ####
 
     def check_dist_to_ball(self, field: fld.Field, actions: list[Optional[Action]], lim_dist: int = 500) -> None:
