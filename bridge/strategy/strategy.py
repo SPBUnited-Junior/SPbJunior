@@ -359,6 +359,7 @@ class Strategy:
         Goalkeeper = Role.Goalkeper(field, actions)
         Ricochet = Role.RicochetAttacker(field, actions)
         Well = Role.Well(field, actions)
+        print(11119)
         
         ally_nearest_robot = fld.find_nearest_robot(self.ball, field.active_allies(False))
         enemy_nearest_robot = fld.find_nearest_robot(self.ball, field.active_enemies(False))
@@ -373,8 +374,9 @@ class Strategy:
         robot = ally_nearest_robot
 
         #говнокод переделать 
-        if (aux.dist(field.ally_goal.center, field.ball.get_pos()) < 1700 or 
-            (aux.dist(field.ally_goal.center, field.ball.get_pos()) < 2200 and ally_dist > enemy_dist + 150)):
+        if (not (aux.is_point_inside_poly(self.ball, field.ally_goal.hull) and field.ball.get_vel().mag() < 200) and
+           aux.dist(field.ally_goal.center, field.ball.get_pos()) < 1700 and ally_dist + 500 > enemy_dist) or (aux.dist(field.ally_goal.center, field.ball.get_pos()) < 2200 and ally_dist > enemy_dist + 150):
+
             if (len(field.active_allies(False)) > 1):
                 for rbt in field.active_allies(False):
                     Well.push(rbt)
@@ -412,8 +414,9 @@ class Strategy:
         Well.process()
         #Goalkeeper.process()
 
-        #actions[7] = KickActions.Turn_Kick2(field.enemy_goal.center, 0) 
 
+        #actions[0] = KickActions.Turn_Kick2(field.enemy_goal.center, 0) 
+        #print(154543)
     #### Вспомогательные функции ####
 
     def check_dist_to_ball(self, field: fld.Field, actions: list[Optional[Action]], lim_dist: int = 500) -> None:
