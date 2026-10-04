@@ -89,7 +89,8 @@ class Role:
             pass_point: aux.Point = self.field.pass_points[0]
             ball_pos = self.field.ball.get_pos()
             angle_nearest_robot = (ball_pos - self.attacker.get_pos()).arg()
-            optimal_point: aux.Point = self.field.pass_points[0]
+            if (len(self.field.active_allies(False)) > 1) : optimal_point: aux.Point = self.field.pass_points[0]
+            else: optimal_point = self.field.enemy_goal.center
 
             pass_robot = None
             voltage = get_pass_voltage(aux.dist(ball_pos, optimal_point))
@@ -198,11 +199,7 @@ class Role:
             self.end_angle: float = 0
             self.arc_points()
 
-<<<<<<< HEAD
-        def arc_points(self, num_points: int = 60) -> None:
-=======
         def arc_points(self, num_points: int = 45) -> None:
->>>>>>> a792252ba562cc40cd81526132699f192a83f517
             g = self.field.ally_goal
 
             self.center = (g.up + g.down) / 2.05

@@ -236,7 +236,7 @@ class Actions:
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             if domain.field.is_ball_in_turn(domain.robot) and domain.robot.flag_ball_in_turn:
-                ANGLE_BOOST = 1
+                ANGLE_BOOST = 0.9
                 R_ORBIT = 700
                 MAX_ANGLE_SPEED = 0.7
 
