@@ -198,14 +198,18 @@ class Role:
             self.end_angle: float = 0
             self.arc_points()
 
+<<<<<<< HEAD
         def arc_points(self, num_points: int = 60) -> None:
+=======
+        def arc_points(self, num_points: int = 45) -> None:
+>>>>>>> a792252ba562cc40cd81526132699f192a83f517
             g = self.field.ally_goal
 
             self.center = (g.up + g.down) / 2.05
 
             self.radius = aux.dist(self.center, g.frw)
 
-            field_direction = g.eye_forw
+            field_direction = g.eye_forw  
 
             center_angle = field_direction.arg()
 
@@ -261,7 +265,7 @@ class Role:
             target_pos = self.points_on_arc[self.current_point_idx]
 
             robot_pos = self.goalkeeper.get_pos()
-            if aux.dist(robot_pos, target_pos) < 50:
+            if aux.dist(robot_pos, target_pos) < 15:
                 self.current_point_idx += self.direction
 
                 if self.current_point_idx >= len(self.points_on_arc):
@@ -272,7 +276,7 @@ class Role:
                     self.direction = 1
 
             return target_pos
-
+    
         def process(self) -> None:
             if not self.points_on_arc:
                 self.arc_points()
@@ -312,6 +316,17 @@ class Role:
                 self.actions[self.gk_id] = KickActions.Straight(kick_target, voltage_kick, False, True)
                 kick_status[self.gk_id] = Kick_Status.Kick_in_goal_hull
                 self.field.strategy_image.draw_circle(robot_pos, (255, 165, 0), 30)
+                return
+
+            ball_is_stopped = ball_speed < 1.0 
+
+            if ball_is_stopped:
+
+                angle_to_ball = (ball_pos - robot_pos).arg()
+                self.actions[self.gk_id] = Actions.GoToPoint(robot_pos, angle_to_ball)
+                kick_status[self.gk_id] = Kick_Status.Not_Kick
+                self.field.strategy_image.draw_circle(robot_pos, (0, 255, 0), 20)
+                self.zone()
                 return
 
             if dist_to_goal > 2000 and ball_speed < 100:
@@ -486,7 +501,8 @@ class Role:
             center = lower_point - point
             center = center.unity() * (radius / abs(sin_val))
             center = aux.rotate(center, -angle)
-            return aux.closest_point_on_line(aux.Point(point.x - 100, point.y), center + point, robot, "S") #center + point  # Используем point как исходную точку (аналог ball в оригинале)
+            #return aux.closest_point_on_line(aux.Point(point.x - 100, point.y), center + point, robot, "S") #center + point  # Используем point как исходную точку (аналог ball в оригинале)
+            return center + point
 
 
         def process(self) -> None:
@@ -495,9 +511,9 @@ class Role:
 
             ball_pos = self.field.ball.get_pos()
             for rbt in self.ally_robots:
-                pos = self._circle_to_two_tangents(80, ball_pos, self.field.ally_goal.down, self.field.ally_goal.up, rbt.get_pos())
+                pos = self._circle_to_two_tangents(90, ball_pos, self.field.ally_goal.down, self.field.ally_goal.up, rbt.get_pos())
                 if (aux.is_point_inside_poly(pos, self.field.ally_goal.hull)):
-                    pos = (self.field.ally_goal.center - ball_pos).unity() * 120
+                    pos = (self.field.ally_goal.center - ball_pos).unity() * 90
                 kick_status[rbt.r_id] = Kick_Status.Not_Kick
                 self.actions[rbt.r_id] = Actions.GoToPoint(pos, (ball_pos - rbt.get_pos()).arg())
 

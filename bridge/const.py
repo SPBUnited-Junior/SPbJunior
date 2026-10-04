@@ -232,9 +232,15 @@ BALL_GRABBED_DIST_TURN = 130
 KICK_ALIGN_ANGLE = 0.08
 
 # VOLTAGES
-VOLTAGE_SHOOT = 8
+VOLTAGE_SHOOT = 7
 VOLTAGE_UP = 13
 VOLTAGE_ZERO = 7
 
 #Use dribler
 DRIBLER_IS_USE = True
+
+
+########################################345678#############################
+OUT_BALL_DIST = 400              # расстояние от мяча до аута, при котором считаем "мяч у аута"
+OUT_RETREAT_DIST = 1500          # на сколько отъехать от аута
+OUT_RETREAT_SPEED = 700

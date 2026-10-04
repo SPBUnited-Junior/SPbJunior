@@ -97,8 +97,8 @@ class Strategy:
         # Индексы роботов
 
         self.goalkeeper_idx = 0
-        self.idx1 = 9
-        self.idx2 = 10
+        self.idx1 = 6
+        self.idx2 = 7
         
         # Индексы роботов соперника
 
@@ -411,6 +411,7 @@ class Strategy:
         Defer.process()
         Attacker.process()
         Well.process()
+        #Goalkeeper.process()
 
         #actions[7] = KickActions.Turn_Kick2(field.enemy_goal.center, 0) 
 
