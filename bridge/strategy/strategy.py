@@ -97,8 +97,8 @@ class Strategy:
         # Индексы роботов
 
         self.goalkeeper_idx = 0
-        self.idx1 = 6
-        self.idx2 = 7
+        self.idx1 = 1
+        self.idx2 = 2
         
         # Индексы роботов соперника
 
