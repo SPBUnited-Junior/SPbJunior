@@ -21,11 +21,12 @@ def check_goal_point(
 
 
     # Расчёт касательных к вражеским роботам
+    flag_goalkeeper = False
     result_cords = []
     for rbt in field.active_enemies(True):
         if (not flag_goalkeeper and rbt.r_id == const.ENEMY_GK): continue
         enemy = rbt.get_pos()
-        tangent_points = aux.get_tangent_points(enemy, ball, const.ROBOT_R + aux.dist(ball, enemy) * 0.003 * castom_cof)
+        tangent_points = aux.get_tangent_points(enemy, ball, const.ROBOT_R + aux.dist(ball, enemy) * 0.000 * castom_cof)
         if len(tangent_points) >= 2:
             cords_peresch = []
             for count in range(2):

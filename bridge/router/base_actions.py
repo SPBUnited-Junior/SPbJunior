@@ -665,7 +665,7 @@ class KickActions:
     class Kick_Auto(Kick):
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             kick_auto_type = self.select_type(domain, current_action)
-            print(kick_auto_type)
+            kick_auto_type = Kick_Status.Straight
             if kick_auto_type == Kick_Status.Straight:
                 return [KickActions.Straight(
                     self.target_pos, self.voltage, 

@@ -181,11 +181,11 @@ class Role:
 
     class Goalkeper(Basic_Role):
 
-        DEFEND_SPEED_MULT: float = 2.5
-        PATROL_SPEED_MULT: float = 2
-        INTERCEPT_SPEED_MULT: float = 2.1
-        EMERGENCY_SPEED_MULT: float = 2
-        ACCEL_LIMIT: float = 0.35
+        DEFEND_SPEED_MULT: float = 2.8
+        PATROL_SPEED_MULT: float = 2.2
+        INTERCEPT_SPEED_MULT: float = 2.4
+        EMERGENCY_SPEED_MULT: float = 2.4
+        ACCEL_LIMIT: float = 0.50
 
         def __init__(
             self,
@@ -349,7 +349,7 @@ class Role:
                 self._last_vel = aux.Point(0, 0)
                 return
 
-            ball_is_stopped = ball_speed < 1.0
+            ball_is_stopped = ball_speed < 0.0
 
             if ball_is_stopped:
                 angle_to_ball = (ball_pos - robot_pos).arg()
@@ -560,8 +560,8 @@ class Role:
             ball_pos = self.field.ball.get_pos()
             for rbt in self.ally_robots:
                 pos = self._circle_to_two_tangents(90, ball_pos, self.field.ally_goal.down, self.field.ally_goal.up, rbt.get_pos())
-                if (aux.is_point_inside_poly(pos, self.field.ally_goal.hull)):
-                    pos = (self.field.ally_goal.center - ball_pos).unity() * 90
+                #if (aux.is_point_inside_poly(pos, self.field.ally_goal.hull)):
+                pos = (self.field.ally_goal.center - ball_pos).unity() * 90
                 kick_status[rbt.r_id] = Kick_Status.Not_Kick
                 self.actions[rbt.r_id] = Actions.GoToPoint(pos, (ball_pos - rbt.get_pos()).arg())
 

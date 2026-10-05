@@ -130,7 +130,7 @@ class Strategy:
         self.nearest_robot: rbt.Robot | None = None
 
         #для состояний 
-        self.dist_to_ball = 450
+        self.dist_to_ball = 530
 
         self.ball_status = BallStatus.Passive
         self.ball_status_poly = BallStatusInsidePoly.NotInsidePoly
@@ -375,7 +375,7 @@ class Strategy:
 
         #говнокод переделать 
         if (not (aux.is_point_inside_poly(self.ball, field.ally_goal.hull) and field.ball.get_vel().mag() < 200) and
-            aux.dist(field.ally_goal.center, field.ball.get_pos()) < 1700 and ally_dist + 500 > enemy_dist) or (aux.dist(field.ally_goal.center, field.ball.get_pos()) < 2200 and ally_dist > enemy_dist + 150):
+            (aux.dist(field.ally_goal.center, field.ball.get_pos()) < 1700 and ally_dist + 400 > enemy_dist) or (aux.dist(field.ally_goal.center, field.ball.get_pos()) < 2200 and ally_dist > enemy_dist + 150)):
 
             if (len(field.active_allies(False)) > 1):
                 for rbt in field.active_allies(False):

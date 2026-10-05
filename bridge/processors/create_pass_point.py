@@ -120,12 +120,12 @@ class ExplorePasses(BaseProcessor):
         if self.nearest_to_attacker(field, point, nearest_robot.get_pos()):
             return 0
          
-        cath_dist = aux.dist(nearest_robot.get_pos(), ball) - const.BALL_R - const.ROBOT_R + 20
+        cath_dist = aux.dist(nearest_robot.get_pos(), ball) - const.BALL_R
 
         target_angle = (point - nearest_robot.get_pos()).arg()
         diff_angle = abs(aux.wind_down_angle(target_angle - nearest_robot.get_angle()))
 
-        catch_time = cath_dist / (const.MAX_SPEED * 1.1) + 0.001 * diff_angle / const.ANGLE_VEL_MAX
+        catch_time = cath_dist / (const.MAX_SPEED * 0.4) + 0.001 * diff_angle / const.ANGLE_VEL_MAX
 
 
         """
