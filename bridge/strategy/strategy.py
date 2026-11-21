@@ -1,21 +1,24 @@
 """High-level strategy code"""
 
 # !v DEBUG ONLY
-import math  # type: ignore
-from time import time  # type: ignore
+import math  # type: ignore  # noqa: F401
+from time import time  # type: ignore  # noqa: F401
 from typing import Optional
 from enum import Enum
 
 from bridge import const
-from bridge.auxiliary import aux, fld, rbt  # type: ignore
+from bridge.auxiliary import aux, fld, rbt  # type: ignore  # noqa: F401
 from bridge.const import State as GameStates
-from bridge.router.base_actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore  
+from bridge.router.actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore  
 from bridge.strategy.check_point import check_goal_point
 from bridge.strategy.Role import Role
 from bridge.strategy.flags import kick_status
 from bridge.strategy.flags import Kick_Status, KickType
 
 from bridge.strategy.ricochet import draw_ricochet
+
+
+
 
 
 
