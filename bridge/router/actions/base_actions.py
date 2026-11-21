@@ -236,3 +236,77 @@ class Actions:
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             current_action.dribbler_speed = self.speed
+
+
+
+
+def get_pass_voltage(length: float) -> int:
+    """Calc voltage for pass by length"""
+    if const.IS_SIMULATOR_USED:
+        # TODO fix control decoder
+        return int(aux.minmax(0.0011 * length + 1.2, 5, const.VOLTAGE_SHOOT))
+    print(int(aux.minmax(0.005 * length + 1.1, 6, const.VOLTAGE_SHOOT)))
+    return int(aux.minmax(0.005 * length + 1.1, 6, const.VOLTAGE_SHOOT))
+
+
+def get_grab_speed(
+    robot_pos: aux.Point,
+    transl_vel: aux.Point,
+    field: fld.Field,
+    grab_point: aux.Point,
+    grab_angle: float,
+    target_speed: float = 0,
+) -> aux.Point:
+    """Calculate speed for carefully grabbing a ball"""
+    ball = field.ball.get_pos()
+
+    point_on_center_line = aux.closest_point_on_line(ball, grab_point, robot_pos, "S")
+    dist_to_center_line = aux.dist(robot_pos, point_on_center_line)
+    ball_dist_center_line = aux.dist(point_on_center_line, ball)
+
+    if ball_dist_center_line == 0:
+        offset_angle = const.GRAB_OFFSET_ANGLE
+    else:
+        offset_angle = math.atan(dist_to_center_line / ball_dist_center_line)
+
+    dist_to_catch = (ball - aux.rotate(aux.RIGHT, grab_angle) * const.GRAB_DIST) - robot_pos
+
+    vel_to_catch = dist_to_catch * const.GRAB_MULT
+
+    vel_to_catch_r = (
+        aux.scal_mult(
+            vel_to_catch,
+            aux.rotate(aux.RIGHT, grab_angle),
+        )
+        + target_speed
+    )
+
+    vel_to_align_r = aux.scal_mult(
+        transl_vel,
+        aux.rotate(aux.RIGHT, grab_angle),
+    )
+
+    vel_to_align = transl_vel - aux.rotate(aux.RIGHT, grab_angle) * vel_to_align_r
+
+    board = min(offset_angle / const.GRAB_OFFSET_ANGLE, 1)  # 0 - go to ball; 1 - go to grab_point
+
+    vel_r = vel_to_catch_r * (1 - board) + vel_to_align_r * board
+    vel = vel_to_align + aux.rotate(aux.RIGHT, grab_angle) * vel_r
+
+    return vel
+
+
+def convert_to_screen(
+    ball_screen: aux.Point,
+    scale: float,
+    angle: float,
+    ball: aux.Point,
+    point: aux.Point,
+) -> aux.Point:
+    """Convert cord on field to cord on image"""
+    vec_from_ball = point - ball
+    scaled_vec = vec_from_ball * scale
+    rotated_vec = aux.rotate(scaled_vec, angle)
+    final_point = ball_screen + rotated_vec
+    return final_point
+
