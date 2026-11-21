@@ -6,6 +6,7 @@ from math import cos, pi
 from typing import Optional
 
 from bridge import const, drawing
+from time import time
 from bridge.auxiliary import aux, entity, rbt
 
 
@@ -97,6 +98,9 @@ class Field:
         self.strategy_image = drawing.Image(drawing.ImageTopic.STRATEGY)
         self.router_image = drawing.Image(drawing.ImageTopic.ROUTER)
         self.path_image = drawing.Image(drawing.ImageTopic.PATH_GENERATION)
+        self.delta_time: float = 0
+        self.timer: float = 0
+        self.pass_robot: Optional[rbt.Robot] = None
 
         self.ally_color = color
         if self.ally_color == const.COLOR:
@@ -220,6 +224,8 @@ class Field:
 
         self.update_active_allies([robot for robot in self.allies if (robot.is_used() and robot.r_id != self.gk_id)])
         self.update_active_enemies([robot for robot in self.enemies if (robot.is_used() and robot.r_id != self.enemy_gk_id)])
+        self.delta_time = time() - self.timer
+        self.timer = time()
 
     def update_ball(self, pos: aux.Point, t: float) -> None:
         """update ball position"""
@@ -378,7 +384,7 @@ class Field:
             (pos_cath is None
             or aux.dist(pos_cath, pas_point) > const.DIST_CATCH_BALL
             or dist_to_target > const.DIST_TO_PASS
-            or self.ball.get_vel().mag() < dist_to_target * 0.2 + 50)
+            or self.ball.get_vel().mag() < dist_to_target * 0.4 + 100)
         ):
             return False
         return True

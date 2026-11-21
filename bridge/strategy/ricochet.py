@@ -9,7 +9,7 @@ from bridge.auxiliary import aux, fld
 
 
 def draw_ricochet(field: fld.Field, ball_pos: aux.Point) -> None:
-
+    
 
     right_wall = field.hull[0].x   # Правая стенка 
     left_wall = field.hull[2].x    # Левая стенка -
@@ -172,44 +172,15 @@ def get_ricochet_hit_point(
         target_point = field.enemy_goal.center
     
 
-    right_wall = field.hull[0].x
-    left_wall = field.hull[2].x
     top_wall = field.hull[0].y
     bottom_wall = field.hull[2].y
-
-    dist_to_right = abs(ball_pos.x - right_wall)
-    dist_to_left = abs(ball_pos.x - left_wall)
     dist_to_top = abs(ball_pos.y - top_wall)
     dist_to_bottom = abs(ball_pos.y - bottom_wall)
     
-    min_dist = min(dist_to_right, dist_to_left, dist_to_top, dist_to_bottom)
-    
-    if min_dist == dist_to_right:
+    min_dist = min(dist_to_top, dist_to_bottom)
 
-        wall_x = right_wall - wall_offset
-  
-        reflected_point = aux.Point(
-            wall_x + (wall_x - target_point.x),
-            target_point.y
-        )
-        if abs(reflected_point.x - ball_pos.x) > 0.1:
-            t = (wall_x - ball_pos.x) / (reflected_point.x - ball_pos.x)
-            hit_y = ball_pos.y + t * (reflected_point.y - ball_pos.y)
-            return aux.Point(wall_x, hit_y)
             
-    elif min_dist == dist_to_left:
-
-        wall_x = left_wall + wall_offset
-        reflected_point = aux.Point(
-            wall_x - (target_point.x - wall_x),
-            target_point.y
-        )
-        if abs(reflected_point.x - ball_pos.x) > 0.1:
-            t = (wall_x - ball_pos.x) / (reflected_point.x - ball_pos.x)
-            hit_y = ball_pos.y + t * (reflected_point.y - ball_pos.y)
-            return aux.Point(wall_x, hit_y)
-            
-    elif min_dist == dist_to_top:
+    if min_dist == dist_to_top:
 
         wall_y = top_wall - wall_offset
         reflected_point = aux.Point(
@@ -242,3 +213,24 @@ def get_ricochet_hit_point_center(
 ) -> Optional[aux.Point]:
    
     return get_ricochet_hit_point(field, ball_pos, field.enemy_goal.center, wall_offset)
+
+def is_shot_to_own_goal(
+    field: fld.Field,
+    ball_pos: aux.Point,
+    target_point: aux.Point,
+) -> bool:
+
+    if aux.is_point_inside_poly(target_point, field.ally_goal.hull):
+        return True
+
+    inter = aux.get_line_intersection(
+        field.ally_goal.up,
+        field.ally_goal.down,
+        ball_pos,
+        target_point,
+        "SR",
+    )
+    if inter is not None:
+        return True
+
+    return False

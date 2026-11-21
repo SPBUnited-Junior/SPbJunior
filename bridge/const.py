@@ -179,8 +179,8 @@ VIEW_DIST = 2500
 KEEP_BALL_DIST = 300 + ROBOT_R
 
 # is_ball_in
-GRAB_ALIGN_DIST = 130
-BALL_GRABBED_ANGLE = 0.6
+GRAB_ALIGN_DIST = 120
+BALL_GRABBED_ANGLE = 0.7
 BALL_GRABBED_DIST = 110
 # is_kick_aligned
 KICK_ALIGN_DIST_MULT = 1.5
@@ -191,13 +191,17 @@ KICK_ALIGN_OFFSET = 40
 # for grabbing ball
 GRAB_AREA = GRAB_ALIGN_DIST
 # GRAB_DIST = 45  # 30 is good
-GRAB_DIST = 65
-GRAB_MULT = 6  # speed = dist * mult
+GRAB_DIST = 50
+GRAB_MULT = 5  # speed = dist * mult
 GRAB_OFFSET_ANGLE = 0.25
 
 #check_catch_ball
 DIST_CATCH_BALL = 500
 DIST_TO_PASS = 2200
+
+#catch ball
+
+CATCH_SPEED = 0.5
 
 if IS_SIMULATOR_USED:
     GRAB_ALIGN_DIST = 150
@@ -207,15 +211,15 @@ if IS_SIMULATOR_USED:
     GRAB_OFFSET_ANGLE = 0.45
 
 #check point to kick
-MIN_PASS_DIST = 700
+MIN_PASS_DIST = 1200
 MIN_DIST_FROM_KICK = 400
 
 #count passes point
 COUNT_PASSES_POINT = 4
-DIST_PASSES_POINT = 500
+DIST_PASSES_POINT = 800
 
 #point_nearest_to_robot
-MIN_DIST_TO_GOAL = 400
+MIN_DIST_TO_GOAL = 200
 
 #turn Kick
 START_VEL_TURN = 0
@@ -224,10 +228,19 @@ VEL_TURN_MAX = 850
 ANGLE_VEL_MAX = 1.1
 BALL_GRABBED_DIST_TURN = 130
 
+# ACTION_KICK_AUTO
+KICK_ALIGN_ANGLE = 0.08
+
 # VOLTAGES
-VOLTAGE_SHOOT = 11
+VOLTAGE_SHOOT = 8
 VOLTAGE_UP = 13
 VOLTAGE_ZERO = 8
 
 #Use dribler
 DRIBLER_IS_USE = True
+
+
+########################################345678#############################
+OUT_BALL_DIST = 400              # расстояние от мяча до аута, при котором считаем "мяч у аута"
+OUT_RETREAT_DIST = 1500          # на сколько отъехать от аута
+OUT_RETREAT_SPEED = 700
